@@ -94,3 +94,8 @@ startServer();
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled Promise Rejection:', err);
 });
+
+// Handle uncaught exceptions (log but keep process alive)
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
