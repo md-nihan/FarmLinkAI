@@ -10,26 +10,34 @@ const crypto = require('crypto');
 
 const MessagingResponse = twilio.twiml.MessagingResponse;
 
-// Initialize Twilio client
-let twilioClient;
-try {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  
-  console.log('🔧 Twilio Configuration Check:');
-  console.log(`   Account SID: ${accountSid ? 'SET' : 'MISSING'}`);
-  console.log(`   Auth Token: ${authToken ? 'SET' : 'MISSING'}`);
-  
-  if (!accountSid || !authToken) {
-    console.error('❌ Twilio credentials are missing!');
+// Initialize Twilio client placeholder
+let twilioClient = null;
+
+// Function to initialize Twilio client after environment is ready
+function initializeTwilioClient() {
+  try {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    
+    console.log('🔧 Twilio Configuration Check:');
+    console.log(`   Account SID: ${accountSid ? 'SET' : 'MISSING'}`);
+    console.log(`   Auth Token: ${authToken ? 'SET' : 'MISSING'}`);
+    
+    if (!accountSid || !authToken) {
+      console.error('❌ Twilio credentials are missing!');
+      twilioClient = null;
+      return false;
+    } else {
+      twilioClient = twilio(accountSid, authToken);
+      console.log('✅ Twilio client initialized successfully');
+      return true;
+    }
+  } catch (error) {
+    console.error('❌ Failed to initialize Twilio client:', error.message);
+    console.error('Error stack:', error.stack);
     twilioClient = null;
-  } else {
-    twilioClient = twilio(accountSid, authToken);
-    console.log('✅ Twilio client initialized successfully');
+    return false;
   }
-} catch (error) {
-  console.error('❌ Failed to initialize Twilio client:', error.message);
-  twilioClient = null;
 }
 
 // Function to download and save image from Twilio
@@ -145,7 +153,14 @@ router.post('/', async (req, res) => {
         const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
         const host = req.headers['x-forwarded-host'] || req.headers.host;
         const backendBase = process.env.BACKEND_PUBLIC_URL || `${proto}://${host}`;
-        imageUrl = `${backendBase}${localImagePath}`;
+        
+        // Ensure we don't have double slashes
+        if (localImagePath.startsWith('/')) {
+          imageUrl = `${backendBase}${localImagePath}`;
+        } else {
+          imageUrl = `${backendBase}/${localImagePath}`;
+        }
+        
         console.log(`✅ Image will be accessible at: ${imageUrl}`);
         console.log(`🔧 Backend Base URL: ${backendBase}`);
         console.log(`🔧 Local Image Path: ${localImagePath}`);
@@ -181,16 +196,30 @@ router.post('/', async (req, res) => {
     console.log(`📲 Sending WhatsApp confirmation to ${fromNumber}:`);
     console.log(confirmationMsg);
     
+    // Initialize Twilio client if not already done
+    if (!twilioClient) {
+      console.log('🔧 Initializing Twilio client...');
+      const initSuccess = initializeTwilioClient();
+      if (!initSuccess) {
+        console.error('❌ Failed to initialize Twilio client. Cannot send WhatsApp confirmation.');
+      }
+    }
+    
     // Check if Twilio client is available
     if (!twilioClient) {
       console.error('❌ Twilio client not initialized. Cannot send WhatsApp confirmation.');
-    } else {
+      // Try to initialize it one more time
+      console.log('🔧 Attempting to initialize Twilio client again...');
+      initializeTwilioClient();
+    }
+    
+    // Try to send WhatsApp confirmation
+    let whatsappSent = false;
+    if (twilioClient) {
       const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER;
       console.log(`🔧 Twilio WhatsApp Number: ${twilioWhatsAppNumber || 'NOT SET'}`);
       
-      if (!twilioWhatsAppNumber) {
-        console.error('❌ Twilio WhatsApp number is not configured!');
-      } else {
+      if (twilioWhatsAppNumber) {
         try {
           // Send the actual WhatsApp message
           await twilioClient.messages.create({
@@ -199,13 +228,26 @@ router.post('/', async (req, res) => {
             to: `whatsapp:${fromNumber}`
           });
           console.log(`✅ WhatsApp confirmation sent successfully to ${fromNumber}`);
+          whatsappSent = true;
         } catch (msgError) {
           console.error(`❌ Failed to send WhatsApp confirmation to ${fromNumber}:`, msgError.message);
           console.error('Error code:', msgError.code);
           console.error('More info:', msgError.moreInfo);
           // Continue anyway - don't fail the whole process
         }
+      } else {
+        console.error('❌ Twilio WhatsApp number is not configured!');
       }
+    } else {
+      console.error('❌ Twilio client could not be initialized.');
+    }
+    
+    // Always send TwiML response
+    if (whatsappSent) {
+      twiml.message(confirmationMsg);
+    } else {
+      // Send a basic TwiML response without WhatsApp confirmation
+      twiml.message('✅ Product listed successfully!\n\nYour produce is now live on the marketplace.\n\nView at: ' + (process.env.BACKEND_PUBLIC_URL || 'http://localhost:3001'));
     }
 
     twiml.message(confirmationMsg);
@@ -258,7 +300,16 @@ router.post('/', async (req, res) => {
           const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
           const host = req.headers['x-forwarded-host'] || req.headers.host;
           const backendBase = process.env.BACKEND_PUBLIC_URL || `${proto}://${host}`;
-          const imageFullUrl = imageUrl.startsWith('http') ? imageUrl : `${backendBase}${imageUrl}`;
+          
+          // Ensure we don't have double slashes
+          let imageFullUrl = imageUrl;
+          if (!imageUrl.startsWith('http')) {
+            if (imageUrl.startsWith('/')) {
+              imageFullUrl = `${backendBase}${imageUrl}`;
+            } else {
+              imageFullUrl = `${backendBase}/${imageUrl}`;
+            }
+          }
           
           console.log(`🔧 Image URL for AI service: ${imageFullUrl}`);
 
@@ -309,3 +360,4 @@ router.get('/test', (req, res) => {
 });
 
 module.exports = router;
+module.exports.initializeTwilioClient = initializeTwilioClient;

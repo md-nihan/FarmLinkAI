@@ -14,6 +14,17 @@ const productRoutes = require('./routes/products');
 const farmerRoutes = require('./routes/farmers');
 const authRoutes = require('./routes/auth');
 
+// Function to initialize services after server start
+function initializeServices() {
+  console.log('🔧 Initializing services...');
+  
+  // Initialize Twilio client in WhatsApp routes
+  if (whatsappRoutes && typeof whatsappRoutes.initializeTwilioClient === 'function') {
+    console.log('🔧 Initializing Twilio client...');
+    whatsappRoutes.initializeTwilioClient();
+  }
+}
+
 const app = express();
 
 // Middleware
@@ -104,6 +115,9 @@ const startServer = async () => {
 
     // Kick off DB connect attempts
     connectDB();
+    
+    // Initialize other services
+    initializeServices();
   });
 };
 
