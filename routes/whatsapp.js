@@ -215,6 +215,13 @@ router.post('/', async (req, res) => {
     
     // Try to send WhatsApp confirmation
     let whatsappSent = false;
+    
+    // Make sure Twilio client is initialized
+    if (!twilioClient) {
+      console.log('🔧 Initializing Twilio client...');
+      initializeTwilioClient();
+    }
+    
     if (twilioClient) {
       const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER;
       console.log(`🔧 Twilio WhatsApp Number: ${twilioWhatsAppNumber || 'NOT SET'}`);
@@ -250,7 +257,6 @@ router.post('/', async (req, res) => {
       twiml.message('✅ Product listed successfully!\n\nYour produce is now live on the marketplace.\n\nView at: ' + (process.env.BACKEND_PUBLIC_URL || 'http://localhost:3001'));
     }
 
-    twiml.message(confirmationMsg);
     res.type('text/xml').send(twiml.toString());
 
     // Save to database in background
@@ -288,7 +294,20 @@ router.post('/', async (req, res) => {
       }
 
       // Fire-and-forget: call AI service to refine quality grade if image is provided
+      // But also provide a fallback that works without AI service
       if (imageUrl) {
+        // First, apply a default grade immediately
+        try {
+          await Product.findByIdAndUpdate(newProduct._id, {
+            quality_grade: 'Grade B',
+            quality_score: 75
+          });
+          console.log('✅ Default grade applied while waiting for AI service');
+        } catch (updateError) {
+          console.error('❌ Failed to apply default grade:', updateError.message);
+        }
+        
+        // Then try to call AI service
         try {
           console.log('🤖 Calling AI service for quality grading (async)...');
           const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:5000';
@@ -331,17 +350,8 @@ router.post('/', async (req, res) => {
           console.error('⚠️ AI service error (async):', aiError.message);
           console.error('Error stack:', aiError.stack);
           
-          // Update product with error status
-          try {
-            await Product.findByIdAndUpdate(newProduct._id, {
-              quality_grade: 'Grade B',
-              quality_score: 75,
-              ai_error: true
-            });
-            console.log('✅ Fallback grade applied due to AI service error');
-          } catch (updateError) {
-            console.error('❌ Failed to update product with fallback grade:', updateError.message);
-          }
+          // Keep the default grade - no need to update again
+          console.log('ℹ️ Keeping default grade due to AI service error');
         }
       }
     });

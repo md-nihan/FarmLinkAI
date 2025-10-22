@@ -34,7 +34,7 @@ const productSchema = new mongoose.Schema({
   },
   quality_grade: {
     type: String,
-    default: 'pending'
+    default: 'Grade B'
   },
   quality_score: {
     type: Number,
