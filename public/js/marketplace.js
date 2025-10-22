@@ -93,14 +93,24 @@ function createProductCard(product) {
     const gradeClass = product.quality_grade.toLowerCase().includes('a') ? 'badge-a' : 
                        product.quality_grade.toLowerCase().includes('b') ? 'badge-b' : 'badge-c';
     
-    const imageUrl = product.image_url || 'https://via.placeholder.com/300x200?text=No+Image';
+    // Handle image URL properly
+    let imageUrl = 'https://via.placeholder.com/300x200?text=No+Image';
+    if (product.image_url) {
+      // If it's already a full URL, use it directly
+      if (product.image_url.startsWith('http')) {
+        imageUrl = product.image_url;
+      } else {
+        // Otherwise, construct the full URL
+        imageUrl = `${API_BASE_URL}${product.image_url}`;
+      }
+    }
     const createdDate = new Date(product.createdAt).toLocaleDateString();
     
     return `
         <div class="product-card glass-card" data-grade="${gradeClass}">
             <div class="product-image-container">
                 <img src="${imageUrl}" alt="${product.product_name}" class="product-image" 
-                     onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
+                     onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'; this.onerror=null;">
                 <div class="product-badge ${gradeClass}">
                     ⭐ ${product.quality_grade}
                 </div>

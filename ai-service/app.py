@@ -150,6 +150,7 @@ def grade_produce():
         # Download image
         image = download_image(image_url)
         if image is None:
+            print(f"❌ Could not download image from {image_url}")
             return jsonify({
                 'grade': 'Grade B',
                 'score': 75,

@@ -196,25 +196,35 @@ router.post('/create', async (req, res) => {
 
     await newProduct.save();
 
-    // Send confirmation notification (simulated WhatsApp)
-    console.log(`\n📱 SIMULATED WhatsApp to ${farmer_phone}:`);
-    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-    console.log(`✅ Product Listed Successfully!`);
-    console.log(``);
-    console.log(`📦 Product: ${product_name}`);
-    console.log(`⚖️ Quantity: ${quantity}`);
-    console.log(`⭐ Quality: ${newProduct.quality_grade}`);
-    console.log(`📍 Location: ${farmer.location || 'Not specified'}`);
-    console.log(``);
-    console.log(`Your produce is now live on the marketplace! 🌾`);
-    console.log(`View at: http://localhost:3001`);
-    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+    // Send confirmation notification via WhatsApp
+    try {
+      const twilioWhatsApp = process.env.TWILIO_WHATSAPP_NUMBER;
+      const farmerWhatsApp = farmer_phone.startsWith('whatsapp:') ? farmer_phone : `whatsapp:${farmer_phone}`;
+      
+      const confirmationMsg = `✅ Product Listed Successfully!\n\n` +
+        `📦 Product: ${product_name}\n` +
+        `⚖️ Quantity: ${quantity}\n` +
+        `⭐ Quality: ${newProduct.quality_grade}\n` +
+        `📍 Location: ${farmer.location || 'Not specified'}\n\n` +
+        `Your produce is now live on the marketplace! 🌾\n\n` +
+        `View at: ${process.env.BACKEND_PUBLIC_URL || 'http://localhost:3001'}`;
+
+      await twilioClient.messages.create({
+        body: confirmationMsg,
+        from: twilioWhatsApp,
+        to: farmerWhatsApp
+      });
+      
+      console.log(`✅ WhatsApp confirmation sent to farmer: ${farmer_phone}`);
+    } catch (notificationError) {
+      console.error(`❌ Failed to send WhatsApp confirmation to ${farmer_phone}:`, notificationError.message);
+      // Don't fail the request if notification fails
+    }
 
     res.status(201).json({
       success: true,
-      message: 'Product created successfully! (WhatsApp confirmation sent - check console)',
-      product: newProduct,
-      whatsapp_message: `✅ Product Listed! ${product_name} (${quantity}) - ${newProduct.quality_grade}. View at marketplace!`
+      message: 'Product created successfully! WhatsApp confirmation sent to farmer.',
+      product: newProduct
     });
 
   } catch (error) {

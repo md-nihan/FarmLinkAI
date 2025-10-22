@@ -24,6 +24,9 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Ensure uploads directory is properly served
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+
 // API Routes
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/products', productRoutes);

@@ -117,8 +117,12 @@ router.post('/', async (req, res) => {
       const localImagePath = await downloadAndSaveImage(twilioMediaUrl);
       
       if (localImagePath) {
-        imageUrl = localImagePath; // Use local path instead of Twilio URL
-        console.log(`✅ Image will be accessible at: http://localhost:3001${localImagePath}`);
+        // Construct full URL for the image
+        const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+        const host = req.headers['x-forwarded-host'] || req.headers.host;
+        const backendBase = process.env.BACKEND_PUBLIC_URL || `${proto}://${host}`;
+        imageUrl = `${backendBase}${localImagePath}`;
+        console.log(`✅ Image will be accessible at: ${imageUrl}`);
       } else {
         console.log('⚠️ Failed to download image, will use default grade');
       }
@@ -143,7 +147,24 @@ router.post('/', async (req, res) => {
       `⚖️ Quantity: ${quantity}\n` +
       `⭐ Quality: ${newProduct.quality_grade}\n` +
       `📍 Location: ${farmer.location || 'Not specified'}\n\n` +
-      `Your produce is now live on the marketplace! 🌾`;
+      `Your produce is now live on the marketplace! 🌾\n\n` +
+      `View at: ${process.env.BACKEND_PUBLIC_URL || 'http://localhost:3001'}`;
+
+    console.log(`📲 Sending WhatsApp confirmation to ${fromNumber}:`);
+    console.log(confirmationMsg);
+    
+    try {
+      // Send the actual WhatsApp message
+      await twilioClient.messages.create({
+        body: confirmationMsg,
+        from: process.env.TWILIO_WHATSAPP_NUMBER,
+        to: `whatsapp:${fromNumber}`
+      });
+      console.log(`✅ WhatsApp confirmation sent successfully to ${fromNumber}`);
+    } catch (msgError) {
+      console.error(`❌ Failed to send WhatsApp confirmation to ${fromNumber}:`, msgError.message);
+      // Continue anyway - don't fail the whole process
+    }
 
     twiml.message(confirmationMsg);
     res.type('text/xml').send(twiml.toString());
@@ -153,6 +174,9 @@ router.post('/', async (req, res) => {
       try {
         await newProduct.save();
         console.log('✅ Product saved to database (post-response)');
+        
+        // Also update the frontend in real-time if WebSocket is available
+        // This would require implementing WebSocket connections
       } catch (e) {
         console.error('❌ Failed to save product:', e.message);
       }
