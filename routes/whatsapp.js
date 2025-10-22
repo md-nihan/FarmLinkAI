@@ -143,7 +143,11 @@ router.post('/', async (req, res) => {
         const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:5000';
         
         // Convert local path to full URL for AI service
-        const imageFullUrl = imageUrl.startsWith('http') ? imageUrl : `http://localhost:3001${imageUrl}`;
+        // Prefer explicit BACKEND_PUBLIC_URL; otherwise derive from request headers
+        const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+        const host = req.headers['x-forwarded-host'] || req.headers.host;
+        const backendBase = process.env.BACKEND_PUBLIC_URL || `${proto}://${host}`;
+        const imageFullUrl = imageUrl.startsWith('http') ? imageUrl : `${backendBase}${imageUrl}`;
         
         const aiResponse = await axios.post(`${aiServiceUrl}/grade`, {
           image_url: imageFullUrl,

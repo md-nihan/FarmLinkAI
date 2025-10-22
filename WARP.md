@@ -16,6 +16,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
   TWILIO_AUTH_TOKEN="{{your_twilio_auth_token}}"
   TWILIO_WHATSAPP_NUMBER="whatsapp:+14155238886" # or your WhatsApp-enabled number
   AI_SERVICE_URL="http://localhost:5000"         # if running locally
+  BACKEND_PUBLIC_URL="http://localhost:3001"     # set to public URL in prod (e.g., https://your-backend.onrender.com)
   JWT_SECRET="{{optional_custom_jwt_secret}}"
   ```
 - Start services (two terminals)
