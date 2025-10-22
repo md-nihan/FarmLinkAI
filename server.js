@@ -105,12 +105,12 @@ const startServer = async () => {
     console.log(`
     🚀 FarmLink AI Server Started!
     
-    📱 Server running at: http://0.0.0.0:${PORT}
-    🌾 Marketplace: http://0.0.0.0:${PORT}
-    👨‍💼 Admin Panel: http://0.0.0.0:${PORT}/admin.html
+    📱 Server running at: ${process.env.BACKEND_PUBLIC_URL || 'https://farmlinkai-7.onrender.com'}
+    🌾 Marketplace: ${process.env.BACKEND_PUBLIC_URL || 'https://farmlinkai-7.onrender.com'}
+    👨‍💼 Admin Panel: ${process.env.BACKEND_PUBLIC_URL || 'https://farmlinkai-7.onrender.com'}/admin.html
     
-    💬 WhatsApp Webhook: http://0.0.0.0:${PORT}/api/whatsapp
-    📊 API Health: http://0.0.0.0:${PORT}/api/health
+    💬 WhatsApp Webhook: ${process.env.BACKEND_PUBLIC_URL || 'https://farmlinkai-7.onrender.com'}/api/whatsapp
+    📊 API Health: ${process.env.BACKEND_PUBLIC_URL || 'https://farmlinkai-7.onrender.com'}/api/health
     `);
 
     // Kick off DB connect attempts

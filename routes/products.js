@@ -209,7 +209,7 @@ router.post('/create', async (req, res) => {
         `⭐ Quality: ${newProduct.quality_grade}\n` +
         `📍 Location: ${farmer.location || 'Not specified'}\n\n` +
         `Your produce is now live on the marketplace! 🌾\n\n` +
-        `View at: ${process.env.BACKEND_PUBLIC_URL || 'http://localhost:3001'}`;
+        `View at: ${process.env.BACKEND_PUBLIC_URL || 'https://farmlinkai-7.onrender.com'}`;
 
       await twilioClient.messages.create({
         body: confirmationMsg,
