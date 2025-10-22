@@ -36,6 +36,12 @@ app.use('/api/auth', authRoutes);
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   const dbState = mongoose.connection?.readyState;
+  
+  // Get the actual backend URL
+  const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const derivedUrl = `${proto}://${host}`;
+  
   res.json({ 
     status: 'ok', 
     message: 'FarmLink AI Server is running',
@@ -46,7 +52,8 @@ app.get('/api/health', (req, res) => {
     },
     config: {
       ai_service_url: process.env.AI_SERVICE_URL ? 'set' : 'unset',
-      backend_public_url: process.env.BACKEND_PUBLIC_URL ? 'set' : 'unset'
+      backend_public_url: process.env.BACKEND_PUBLIC_URL || derivedUrl,
+      derived_backend_url: derivedUrl
     }
   });
 });

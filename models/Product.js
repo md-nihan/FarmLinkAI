@@ -57,6 +57,17 @@ const productSchema = new mongoose.Schema({
   }
 });
 
+// Pre-save hook for debugging
+productSchema.pre('save', function(next) {
+  console.log('🔧 Product pre-save hook:', {
+    product_name: this.product_name,
+    farmer_phone: this.farmer_phone,
+    quantity: this.quantity,
+    image_url: this.image_url
+  });
+  next();
+});
+
 // Index for faster queries
 productSchema.index({ status: 1, createdAt: -1 });
 productSchema.index({ farmer_phone: 1 });

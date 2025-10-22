@@ -13,11 +13,20 @@ const MessagingResponse = twilio.twiml.MessagingResponse;
 // Initialize Twilio client
 let twilioClient;
 try {
-  twilioClient = twilio(
-    process.env.TWILIO_ACCOUNT_SID,
-    process.env.TWILIO_AUTH_TOKEN
-  );
-  console.log('✅ Twilio client initialized successfully');
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  
+  console.log('🔧 Twilio Configuration Check:');
+  console.log(`   Account SID: ${accountSid ? 'SET' : 'MISSING'}`);
+  console.log(`   Auth Token: ${authToken ? 'SET' : 'MISSING'}`);
+  
+  if (!accountSid || !authToken) {
+    console.error('❌ Twilio credentials are missing!');
+    twilioClient = null;
+  } else {
+    twilioClient = twilio(accountSid, authToken);
+    console.log('✅ Twilio client initialized successfully');
+  }
 } catch (error) {
   console.error('❌ Failed to initialize Twilio client:', error.message);
   twilioClient = null;
@@ -138,9 +147,13 @@ router.post('/', async (req, res) => {
         const backendBase = process.env.BACKEND_PUBLIC_URL || `${proto}://${host}`;
         imageUrl = `${backendBase}${localImagePath}`;
         console.log(`✅ Image will be accessible at: ${imageUrl}`);
+        console.log(`🔧 Backend Base URL: ${backendBase}`);
+        console.log(`🔧 Local Image Path: ${localImagePath}`);
       } else {
         console.log('⚠️ Failed to download image, will use default grade');
       }
+    } else {
+      console.log('ℹ️ No media files attached to this message');
     }
 
     // Create product object with a safe default grade first (respond fast to WhatsApp)
@@ -172,17 +185,26 @@ router.post('/', async (req, res) => {
     if (!twilioClient) {
       console.error('❌ Twilio client not initialized. Cannot send WhatsApp confirmation.');
     } else {
-      try {
-        // Send the actual WhatsApp message
-        await twilioClient.messages.create({
-          body: confirmationMsg,
-          from: process.env.TWILIO_WHATSAPP_NUMBER,
-          to: `whatsapp:${fromNumber}`
-        });
-        console.log(`✅ WhatsApp confirmation sent successfully to ${fromNumber}`);
-      } catch (msgError) {
-        console.error(`❌ Failed to send WhatsApp confirmation to ${fromNumber}:`, msgError.message);
-        // Continue anyway - don't fail the whole process
+      const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER;
+      console.log(`🔧 Twilio WhatsApp Number: ${twilioWhatsAppNumber || 'NOT SET'}`);
+      
+      if (!twilioWhatsAppNumber) {
+        console.error('❌ Twilio WhatsApp number is not configured!');
+      } else {
+        try {
+          // Send the actual WhatsApp message
+          await twilioClient.messages.create({
+            body: confirmationMsg,
+            from: twilioWhatsAppNumber,
+            to: `whatsapp:${fromNumber}`
+          });
+          console.log(`✅ WhatsApp confirmation sent successfully to ${fromNumber}`);
+        } catch (msgError) {
+          console.error(`❌ Failed to send WhatsApp confirmation to ${fromNumber}:`, msgError.message);
+          console.error('Error code:', msgError.code);
+          console.error('More info:', msgError.moreInfo);
+          // Continue anyway - don't fail the whole process
+        }
       }
     }
 
@@ -192,7 +214,12 @@ router.post('/', async (req, res) => {
     // Save to database in background
     setImmediate(async () => {
       try {
-        console.log('💾 Saving product to database:', JSON.stringify(newProduct, null, 2));
+        console.log('💾 Saving product to database:', JSON.stringify({
+          farmer_phone: newProduct.farmer_phone,
+          product_name: newProduct.product_name,
+          quantity: newProduct.quantity,
+          image_url: newProduct.image_url
+        }, null, 2));
         await newProduct.save();
         console.log('✅ Product saved to database (post-response)');
         console.log('Product ID:', newProduct._id);
@@ -202,6 +229,20 @@ router.post('/', async (req, res) => {
       } catch (e) {
         console.error('❌ Failed to save product:', e.message);
         console.error('Error stack:', e.stack);
+        
+        // Try to send an error notification to the farmer
+        if (twilioClient && process.env.TWILIO_WHATSAPP_NUMBER) {
+          try {
+            await twilioClient.messages.create({
+              body: `⚠️ We encountered an issue saving your product listing. Please try again or contact support.`,
+              from: process.env.TWILIO_WHATSAPP_NUMBER,
+              to: `whatsapp:${fromNumber}`
+            });
+            console.log(`✅ Error notification sent to farmer: ${fromNumber}`);
+          } catch (notifyError) {
+            console.error(`❌ Failed to send error notification to ${fromNumber}:`, notifyError.message);
+          }
+        }
       }
 
       // Fire-and-forget: call AI service to refine quality grade if image is provided
@@ -209,6 +250,8 @@ router.post('/', async (req, res) => {
         try {
           console.log('🤖 Calling AI service for quality grading (async)...');
           const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:5000';
+          
+          console.log(`🔧 AI Service URL: ${aiServiceUrl}`);
 
           // Convert local path to full URL for AI service
           // Prefer explicit BACKEND_PUBLIC_URL; otherwise derive from request headers
@@ -216,6 +259,8 @@ router.post('/', async (req, res) => {
           const host = req.headers['x-forwarded-host'] || req.headers.host;
           const backendBase = process.env.BACKEND_PUBLIC_URL || `${proto}://${host}`;
           const imageFullUrl = imageUrl.startsWith('http') ? imageUrl : `${backendBase}${imageUrl}`;
+          
+          console.log(`🔧 Image URL for AI service: ${imageFullUrl}`);
 
           const aiResponse = await axios.post(`${aiServiceUrl}/grade`, {
             image_url: imageFullUrl,
@@ -234,6 +279,18 @@ router.post('/', async (req, res) => {
         } catch (aiError) {
           console.error('⚠️ AI service error (async):', aiError.message);
           console.error('Error stack:', aiError.stack);
+          
+          // Update product with error status
+          try {
+            await Product.findByIdAndUpdate(newProduct._id, {
+              quality_grade: 'Grade B',
+              quality_score: 75,
+              ai_error: true
+            });
+            console.log('✅ Fallback grade applied due to AI service error');
+          } catch (updateError) {
+            console.error('❌ Failed to update product with fallback grade:', updateError.message);
+          }
         }
       }
     });
