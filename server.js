@@ -32,10 +32,19 @@ app.use('/api/auth', authRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
+  const dbState = mongoose.connection?.readyState;
   res.json({ 
     status: 'ok', 
     message: 'FarmLink AI Server is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    db: {
+      connected: dbState === 1,
+      readyState: dbState
+    },
+    config: {
+      ai_service_url: process.env.AI_SERVICE_URL ? 'set' : 'unset',
+      backend_public_url: process.env.BACKEND_PUBLIC_URL ? 'set' : 'unset'
+    }
   });
 });
 

@@ -137,10 +137,6 @@ router.post('/', async (req, res) => {
       quality_score: 75
     });
 
-    // Save to database quickly before any AI work
-    await newProduct.save();
-    console.log('✅ Product saved to database (pre-AI)');
-
     // Send immediate confirmation to farmer (avoid Twilio timeout)
     const confirmationMsg = `✅ Product Listed Successfully!\n\n` +
       `📦 Product: ${productName}\n` +
@@ -152,9 +148,17 @@ router.post('/', async (req, res) => {
     twiml.message(confirmationMsg);
     res.type('text/xml').send(twiml.toString());
 
-    // Fire-and-forget: call AI service to refine quality grade if image is provided
-    if (imageUrl) {
-      setImmediate(async () => {
+    // Save to database in background
+    setImmediate(async () => {
+      try {
+        await newProduct.save();
+        console.log('✅ Product saved to database (post-response)');
+      } catch (e) {
+        console.error('❌ Failed to save product:', e.message);
+      }
+
+      // Fire-and-forget: call AI service to refine quality grade if image is provided
+      if (imageUrl) {
         try {
           console.log('🤖 Calling AI service for quality grading (async)...');
           const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:5000';
@@ -183,8 +187,8 @@ router.post('/', async (req, res) => {
         } catch (aiError) {
           console.error('⚠️ AI service error (async):', aiError.message);
         }
-      });
-    }
+      }
+    });
 
   } catch (error) {
     console.error('❌ Webhook Error:', error);
