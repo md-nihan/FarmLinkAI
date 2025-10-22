@@ -198,3 +198,6 @@ if __name__ != "__main__":
     print("  - POST /grade - Grade produce quality")
     print("  - GET /health - Health check")
     print("  - GET /test - Test endpoint\n")
+
+# Make sure the app is available at the module level for Gunicorn
+# This is crucial for the Procfile command: gunicorn -w 1 -b 0.0.0.0:$PORT app:app

@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=65.0.0", "wheel>=0.38.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "farmlink-ai-service"
-dynamic = ["version"]
+version = "1.0.0"
 description = "AI Quality Grading Service for FarmLink AI"
 authors = [
     {name = "FarmLink AI Team"}
@@ -19,15 +19,3 @@ dependencies = [
     "numpy>=1.24.3",
     "gunicorn>=21.2.0"
 ]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0.0",
-    "black>=22.0.0",
-    "flake8>=5.0.0"
-]
-
-[tool.setuptools]
-packages = ["ai_service"]
-
-[tool.setuptools_scm]
