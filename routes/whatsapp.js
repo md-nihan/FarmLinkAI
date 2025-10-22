@@ -127,6 +127,10 @@ router.post('/', async (req, res) => {
       // Format: "Tomato 30kg"
       quantity = lastWord;
       productName = words.slice(0, -1).join(' ');
+    } else if (words.length >= 3 && /^\d+$/.test(secondLastWord) && /^(kg|kgs|ton|tons|quintal|quintals)$/i.test(lastWord)) {
+      // Format: "Potato 20 kg" - number and unit as last two words
+      quantity = `${secondLastWord} ${lastWord}`;
+      productName = words.slice(0, -2).join(' ');
     } else {
       // Assume last word is quantity
       quantity = lastWord;
