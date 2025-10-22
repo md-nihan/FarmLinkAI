@@ -10,34 +10,144 @@ const crypto = require('crypto');
 
 const MessagingResponse = twilio.twiml.MessagingResponse;
 
-// Initialize Twilio client placeholder
-let twilioClient = null;
+// Array to store multiple Twilio clients for failover
+let twilioClients = [];
+let currentClientIndex = 0;
 
-// Function to initialize Twilio client after environment is ready
-function initializeTwilioClient() {
-  try {
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
+// Function to initialize multiple Twilio clients
+function initializeTwilioClients() {
+  twilioClients = [];
+  currentClientIndex = 0;
+  
+  // Check for multiple account configurations
+  const accountConfigs = [];
+  
+  // Check for multiple accounts (TWILIO_ACCOUNT_SID_1, TWILIO_ACCOUNT_SID_2, etc.)
+  for (let i = 1; i <= 5; i++) {
+    const accountSid = process.env[`TWILIO_ACCOUNT_SID_${i}`];
+    const authToken = process.env[`TWILIO_AUTH_TOKEN_${i}`];
+    const whatsappNumber = process.env[`TWILIO_WHATSAPP_NUMBER_${i}`] || process.env.TWILIO_WHATSAPP_NUMBER;
     
-    console.log('🔧 Twilio Configuration Check:');
-    console.log(`   Account SID: ${accountSid ? 'SET' : 'MISSING'}`);
-    console.log(`   Auth Token: ${authToken ? 'SET' : 'MISSING'}`);
-    
-    if (!accountSid || !authToken) {
-      console.error('❌ Twilio credentials are missing!');
-      twilioClient = null;
-      return false;
-    } else {
-      twilioClient = twilio(accountSid, authToken);
-      console.log('✅ Twilio client initialized successfully');
-      return true;
+    if (accountSid && authToken) {
+      accountConfigs.push({
+        accountSid,
+        authToken,
+        whatsappNumber
+      });
+      console.log(`✅ Twilio Account ${i} configured`);
     }
-  } catch (error) {
-    console.error('❌ Failed to initialize Twilio client:', error.message);
-    console.error('Error stack:', error.stack);
-    twilioClient = null;
+  }
+  
+  // If no multiple accounts found, use the primary account
+  if (accountConfigs.length === 0 && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+    accountConfigs.push({
+      accountSid: process.env.TWILIO_ACCOUNT_SID,
+      authToken: process.env.TWILIO_AUTH_TOKEN,
+      whatsappNumber: process.env.TWILIO_WHATSAPP_NUMBER
+    });
+    console.log('✅ Primary Twilio Account configured');
+  }
+  
+  // Initialize clients for each account
+  accountConfigs.forEach((config, index) => {
+    try {
+      const client = twilio(config.accountSid, config.authToken);
+      twilioClients.push({
+        client,
+        config,
+        index
+      });
+      console.log(`✅ Twilio Client ${index + 1} initialized successfully`);
+    } catch (error) {
+      console.error(`❌ Failed to initialize Twilio Client ${index + 1}:`, error.message);
+    }
+  });
+  
+  if (twilioClients.length === 0) {
+    console.error('❌ No Twilio accounts configured!');
     return false;
   }
+  
+  console.log(`✅ Initialized ${twilioClients.length} Twilio account(s) for failover`);
+  return true;
+}
+
+// Function to send WhatsApp message with failover
+async function sendWhatsAppMessageWithFailover(messageOptions) {
+  const errors = [];
+  
+  // Try each client in order until one succeeds
+  for (let i = 0; i < twilioClients.length; i++) {
+    const clientIndex = (currentClientIndex + i) % twilioClients.length;
+    const { client, config } = twilioClients[clientIndex];
+    
+    try {
+      console.log(`📤 Attempting to send message with Twilio Account ${clientIndex + 1}...`);
+      
+      const message = await client.messages.create({
+        body: messageOptions.body,
+        from: config.whatsappNumber,
+        to: messageOptions.to
+      });
+      
+      console.log(`✅ Message sent successfully with Twilio Account ${clientIndex + 1}! Message SID: ${message.sid}`);
+      
+      // Update current client index for next message (round-robin)
+      currentClientIndex = (clientIndex + 1) % twilioClients.length;
+      
+      return message;
+    } catch (error) {
+      console.error(`❌ Failed to send message with Twilio Account ${clientIndex + 1}:`, error.message);
+      console.error('Error code:', error.code);
+      
+      // Check if this is a credit limit error that warrants switching accounts
+      if (isCreditLimitError(error)) {
+        console.log(`⚠️ Credit limit reached for Account ${clientIndex + 1}, will try next account if available`);
+        errors.push({
+          account: clientIndex + 1,
+          error: error.message,
+          code: error.code
+        });
+        // Continue to try next account
+      } else {
+        // For other errors, re-throw immediately
+        throw error;
+      }
+    }
+  }
+  
+  // If we get here, all accounts failed
+  const error = new Error(`Failed to send message with all ${twilioClients.length} Twilio accounts. Errors: ${JSON.stringify(errors)}`);
+  error.code = 'ALL_ACCOUNTS_FAILED';
+  throw error;
+}
+
+// Function to determine if an error is due to credit limits
+function isCreditLimitError(error) {
+  if (!error) return false;
+  
+  // Common Twilio error codes for rate/credit limits
+  const creditLimitCodes = [
+    21614,  // Recipient not valid (can be due to limits)
+    63018,  // Rate limit exceeded
+    21211,  // Invalid 'To' Phone Number (can be due to limits)
+    21408   // Permission to send an SMS has not been enabled for the region
+  ];
+  
+  // Check for specific error messages
+  const errorMessage = (error.message || '').toLowerCase();
+  const creditLimitMessages = [
+    'credit limit',
+    'rate limit',
+    'too many requests',
+    'quota exceeded',
+    'daily limit',
+    'monthly limit'
+  ];
+  
+  return creditLimitCodes.includes(error.code) || 
+         creditLimitMessages.some(msg => errorMessage.includes(msg)) ||
+         error.status === 429; // HTTP Too Many Requests
 }
 
 // Function to download and save image from Twilio
@@ -211,57 +321,20 @@ router.post('/', async (req, res) => {
     console.log(`📲 Sending WhatsApp confirmation to ${fromNumber}:`);
     console.log(confirmationMsg);
     
-    // Initialize Twilio client if not already done
-    if (!twilioClient) {
-      console.log('🔧 Initializing Twilio client...');
-      const initSuccess = initializeTwilioClient();
-      if (!initSuccess) {
-        console.error('❌ Failed to initialize Twilio client. Cannot send WhatsApp confirmation.');
-      }
-    }
-    
-    // Check if Twilio client is available
-    if (!twilioClient) {
-      console.error('❌ Twilio client not initialized. Cannot send WhatsApp confirmation.');
-      // Try to initialize it one more time
-      console.log('🔧 Attempting to initialize Twilio client again...');
-      initializeTwilioClient();
-    }
-    
-    // Try to send WhatsApp confirmation
+    // Try to send WhatsApp confirmation with failover
     let whatsappSent = false;
     
-    // Make sure Twilio client is initialized
-    if (!twilioClient) {
-      console.log('🔧 Initializing Twilio client...');
-      initializeTwilioClient();
-    }
-    
-    if (twilioClient) {
-      const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER;
-      console.log(`🔧 Twilio WhatsApp Number: ${twilioWhatsAppNumber || 'NOT SET'}`);
-      
-      if (twilioWhatsAppNumber) {
-        try {
-          // Send the actual WhatsApp message
-          await twilioClient.messages.create({
-            body: confirmationMsg,
-            from: twilioWhatsAppNumber,
-            to: `whatsapp:${fromNumber}`
-          });
-          console.log(`✅ WhatsApp confirmation sent successfully to ${fromNumber}`);
-          whatsappSent = true;
-        } catch (msgError) {
-          console.error(`❌ Failed to send WhatsApp confirmation to ${fromNumber}:`, msgError.message);
-          console.error('Error code:', msgError.code);
-          console.error('More info:', msgError.moreInfo);
-          // Continue anyway - don't fail the whole process
-        }
-      } else {
-        console.error('❌ Twilio WhatsApp number is not configured!');
-      }
-    } else {
-      console.error('❌ Twilio client could not be initialized.');
+    try {
+      await sendWhatsAppMessageWithFailover({
+        body: confirmationMsg,
+        to: `whatsapp:${fromNumber}`
+      });
+      console.log(`✅ WhatsApp confirmation sent successfully to ${fromNumber}`);
+      whatsappSent = true;
+    } catch (msgError) {
+      console.error(`❌ Failed to send WhatsApp confirmation to ${fromNumber}:`, msgError.message);
+      console.error('Error code:', msgError.code);
+      // Continue anyway - don't fail the whole process
     }
     
     // Always send TwiML response
@@ -294,17 +367,14 @@ router.post('/', async (req, res) => {
         console.error('Error stack:', e.stack);
         
         // Try to send an error notification to the farmer
-        if (twilioClient && process.env.TWILIO_WHATSAPP_NUMBER) {
-          try {
-            await twilioClient.messages.create({
-              body: `⚠️ We encountered an issue saving your product listing. Please try again or contact support.`,
-              from: process.env.TWILIO_WHATSAPP_NUMBER,
-              to: `whatsapp:${fromNumber}`
-            });
-            console.log(`✅ Error notification sent to farmer: ${fromNumber}`);
-          } catch (notifyError) {
-            console.error(`❌ Failed to send error notification to ${fromNumber}:`, notifyError.message);
-          }
+        try {
+          await sendWhatsAppMessageWithFailover({
+            body: `⚠️ We encountered an issue saving your product listing. Please try again or contact support.`,
+            to: `whatsapp:${fromNumber}`
+          });
+          console.log(`✅ Error notification sent to farmer: ${fromNumber}`);
+        } catch (notifyError) {
+          console.error(`❌ Failed to send error notification to ${fromNumber}:`, notifyError.message);
         }
       }
 
@@ -381,4 +451,6 @@ router.get('/test', (req, res) => {
 });
 
 module.exports = router;
-module.exports.initializeTwilioClient = initializeTwilioClient;
+module.exports.initializeTwilioClients = initializeTwilioClients;
+module.exports.sendWhatsAppMessageWithFailover = sendWhatsAppMessageWithFailover;
+module.exports.isCreditLimitError = isCreditLimitError;

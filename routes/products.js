@@ -4,11 +4,9 @@ const Product = require('../models/Product');
 const Farmer = require('../models/Farmer');
 const twilio = require('twilio');
 
-// Initialize Twilio client
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+// We'll import the sendWhatsAppMessageWithFailover function from whatsapp routes
+const whatsappRoutes = require('./whatsapp');
+const sendWhatsAppMessageWithFailover = whatsappRoutes.sendWhatsAppMessageWithFailover;
 
 // Get all available products
 router.get('/', async (req, res) => {
@@ -89,13 +87,11 @@ router.post('/order/:productId', async (req, res) => {
     
     await product.save();
 
-    // Send WhatsApp notification to farmer
+    // Send WhatsApp notification to farmer with failover
     try {
       const farmerWhatsApp = product.farmer_phone.startsWith('whatsapp:') ? product.farmer_phone : `whatsapp:${product.farmer_phone}`;
-      const twilioWhatsApp = process.env.TWILIO_WHATSAPP_NUMBER;
       
       console.log(`📨 Sending order notification...`);
-      console.log(`   From: ${twilioWhatsApp}`);
       console.log(`   To: ${farmerWhatsApp}`);
       
       const notificationMsg = `🎉 *Order Alert!*\n\n` +
@@ -106,17 +102,15 @@ router.post('/order/:productId', async (req, res) => {
         `📞 Contact: ${buyer_phone || 'Will call you'}\n\n` +
         `Please prepare the order for dispatch! 🚜`;
 
-      const message = await twilioClient.messages.create({
+      await sendWhatsAppMessageWithFailover({
         body: notificationMsg,
-        from: twilioWhatsApp,
         to: farmerWhatsApp
       });
 
-      console.log(`✅ Order notification sent successfully! Message SID: ${message.sid}`);
+      console.log(`✅ Order notification sent successfully!`);
     } catch (twilioError) {
       console.error('⚠️ Failed to send WhatsApp notification:', twilioError.message);
       console.error('⚠️ Error code:', twilioError.code);
-      console.error('⚠️ More info:', twilioError.moreInfo);
       // Don't fail the order if notification fails
     }
 
@@ -198,9 +192,8 @@ router.post('/create', async (req, res) => {
     await newProduct.save();
     console.log('✅ Manual product saved to database. Product ID:', newProduct._id);
 
-    // Send confirmation notification via WhatsApp
+    // Send confirmation notification via WhatsApp with failover
     try {
-      const twilioWhatsApp = process.env.TWILIO_WHATSAPP_NUMBER;
       const farmerWhatsApp = farmer_phone.startsWith('whatsapp:') ? farmer_phone : `whatsapp:${farmer_phone}`;
       
       const confirmationMsg = `✅ Product Listed Successfully!\n\n` +
@@ -211,9 +204,8 @@ router.post('/create', async (req, res) => {
         `Your produce is now live on the marketplace! 🌾\n\n` +
         `View at: ${process.env.BACKEND_PUBLIC_URL || 'https://farmlinkai-7.onrender.com'}`;
 
-      await twilioClient.messages.create({
+      await sendWhatsAppMessageWithFailover({
         body: confirmationMsg,
-        from: twilioWhatsApp,
         to: farmerWhatsApp
       });
       

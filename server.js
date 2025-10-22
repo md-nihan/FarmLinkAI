@@ -18,10 +18,10 @@ const authRoutes = require('./routes/auth');
 function initializeServices() {
   console.log('🔧 Initializing services...');
   
-  // Initialize Twilio client in WhatsApp routes
-  if (whatsappRoutes && typeof whatsappRoutes.initializeTwilioClient === 'function') {
-    console.log('🔧 Initializing Twilio client...');
-    whatsappRoutes.initializeTwilioClient();
+  // Initialize multiple Twilio clients for failover
+  if (whatsappRoutes && typeof whatsappRoutes.initializeTwilioClients === 'function') {
+    console.log('🔧 Initializing multiple Twilio clients for failover...');
+    whatsappRoutes.initializeTwilioClients();
   }
 }
 
@@ -43,6 +43,32 @@ app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/farmers', farmerRoutes);
 app.use('/api/auth', authRoutes);
+
+// Test route for multi-account Twilio system
+app.get('/api/test-twilio', async (req, res) => {
+  try {
+    // Import the WhatsApp routes to access the multi-account system
+    const whatsappRoutes = require('./routes/whatsapp');
+    const initializeTwilioClients = whatsappRoutes.initializeTwilioClients;
+    const sendWhatsAppMessageWithFailover = whatsappRoutes.sendWhatsAppMessageWithFailover;
+    
+    // Re-initialize clients to ensure they're loaded
+    initializeTwilioClients();
+    
+    res.json({
+      success: true,
+      message: 'Multi-account Twilio system is ready!',
+      accountCount: whatsappRoutes.twilioClients ? whatsappRoutes.twilioClients.length : 0,
+      testInstructions: 'Use POST /api/test-twilio with { to: "whatsapp:+1234567890", message: "test message" } to test'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error testing Twilio system',
+      error: error.message
+    });
+  }
+});
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
