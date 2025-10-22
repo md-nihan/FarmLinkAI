@@ -101,8 +101,8 @@ const PORT = process.env.PORT || 3001;
 
 // Determine the public URL for the backend
 const getBackendPublicUrl = (req) => {
-  // Use environment variable if set
-  if (process.env.BACKEND_PUBLIC_URL) {
+  // Use environment variable if set and not in local development
+  if (process.env.BACKEND_PUBLIC_URL && process.env.NODE_ENV !== 'development') {
     return process.env.BACKEND_PUBLIC_URL;
   }
   

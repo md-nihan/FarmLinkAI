@@ -154,9 +154,10 @@ router.post('/', async (req, res) => {
       
       if (localImagePath) {
         // Construct full URL for the image
-        // Use BACKEND_PUBLIC_URL if set, otherwise derive from request or use localhost for local dev
+        // Use the same logic as server.js for consistency
         let backendBase;
-        if (process.env.BACKEND_PUBLIC_URL) {
+        // Use environment variable if set and not in local development
+        if (process.env.BACKEND_PUBLIC_URL && process.env.NODE_ENV !== 'development') {
           backendBase = process.env.BACKEND_PUBLIC_URL;
         } else if (process.env.NODE_ENV === 'production') {
           const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
@@ -164,7 +165,7 @@ router.post('/', async (req, res) => {
           backendBase = `${proto}://${host}`;
         } else {
           // For local development, use localhost
-          backendBase = 'http://localhost:3001';
+          backendBase = `http://localhost:${process.env.PORT || 3001}`;
         }
         
         // Ensure we don't have double slashes
