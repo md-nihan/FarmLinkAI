@@ -188,17 +188,13 @@ def test():
         'endpoints': ['/health', '/grade', '/test']
     })
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    debug = os.environ.get('NODE_ENV') != 'production'
-    
-    print(f"\n🤖 Starting AI Quality Grading Service...")
-    print(f"📊 Model: Rule-based system")
-    print(f"🌐 Server: http://0.0.0.0:{port}")
-    print(f"🔧 Debug mode: {debug}")
+# For Render deployment
+if __name__ != "__main__":
+    # This block runs when imported by Gunicorn
+    print("\n🤖 Starting AI Quality Grading Service for Render...")
+    print("📊 Model: Rule-based system")
+    print("🌐 Server: Will be started by Gunicorn")
     print("\nEndpoints:")
     print("  - POST /grade - Grade produce quality")
     print("  - GET /health - Health check")
     print("  - GET /test - Test endpoint\n")
-    
-    app.run(host='0.0.0.0', port=port, debug=debug)
