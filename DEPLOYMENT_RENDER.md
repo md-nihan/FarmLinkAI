@@ -20,8 +20,8 @@ git commit -m "Prepare for Render deployment"
 2. Push your code to GitHub:
 ```bash
 git remote add origin https://github.com/yourusername/farmlink-ai.git
-git branch -M main
-git push -u origin main
+git branch -M master
+git push -u origin master
 ```
 
 ## Step 2: Set Up MongoDB Atlas
@@ -43,7 +43,7 @@ git push -u origin main
    - **Name**: `farmlink-ai-ai-service`
    - **Environment**: Python 3
    - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `python app.py`
+   - **Start Command**: `gunicorn -w 1 -b 0.0.0.0:$PORT render:app`
    - **Root Directory**: `ai-service`
 5. Click "Advanced" and add environment variables:
    - `PYTHON_VERSION`: `3.8.11` (or higher)
@@ -69,9 +69,9 @@ git push -u origin main
 | `TWILIO_AUTH_TOKEN` | Your Twilio Auth Token |
 | `TWILIO_WHATSAPP_NUMBER` | Your Twilio WhatsApp number (e.g., `whatsapp:+14155238886`) |
 | `TWILIO_PHONE_NUMBER` | Your Twilio phone number |
-| `AI_SERVICE_URL` | URL of your deployed AI service (will get after deploying AI service) |
+| `AI_SERVICE_URL` | URL of your deployed Python AI service (will get after deploying AI service) |
 | `JWT_SECRET` | A random string for JWT token signing |
-| `PORT` | `10000` |
+| `PORT` | `10000`
 
 6. Click "Create Web Service"
 
@@ -115,11 +115,12 @@ curl -X POST https://YOUR-BACKEND-URL.onrender.com/api/auth/create-admin \
 - `TWILIO_PHONE_NUMBER`: Twilio phone number
 - `AI_SERVICE_URL`: URL of the deployed Python AI service
 - `JWT_SECRET`: Secret key for JWT tokens
-- `PORT`: Port to run on (default: 10000)
+- `PORT`: Port to run on (default: 3001 for local, Render sets automatically)
 
 ### Required for Python AI Service:
 - `TWILIO_ACCOUNT_SID`: (Optional) For downloading Twilio media
 - `TWILIO_AUTH_TOKEN`: (Optional) For downloading Twilio media
+- `PORT`: (Set automatically by Render)
 
 ## Troubleshooting
 
@@ -143,6 +144,11 @@ curl -X POST https://YOUR-BACKEND-URL.onrender.com/api/auth/create-admin \
 4. **Environment Variables Not Set**:
    - Check all required environment variables are set in Render
    - Redeploy after making changes to environment variables
+
+5. **Port Configuration Issues**:
+   - The application now correctly uses `process.env.PORT` for Render compatibility
+   - Node.js default port is 3001 for local development
+   - Python AI service default port is 5000 for local development
 
 ### Checking Logs:
 
