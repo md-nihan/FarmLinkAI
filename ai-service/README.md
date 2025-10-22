@@ -6,13 +6,6 @@ AI Quality Grading Service for the FarmLink AI Platform.
 
 This service provides automated quality grading for agricultural products using rule-based image analysis. It's designed to work as part of the larger FarmLink AI ecosystem.
 
-## Features
-
-- **Rule-based Image Analysis**: Analyzes produce images using heuristics for brightness, sharpness, and resolution
-- **Quality Grading**: Assigns Grade A/B/C ratings based on image quality
-- **RESTful API**: Simple HTTP interface for integration
-- **Twilio Integration**: Works with Twilio media URLs for WhatsApp image processing
-
 ## API Endpoints
 
 ### POST /grade
@@ -60,27 +53,27 @@ Test endpoint.
 }
 ```
 
-## Installation
+## Local development
 
 ```bash
 pip install -r requirements.txt
-```
-
-## Usage
-
-```bash
 python app.py
 ```
 
-Or with Gunicorn (for production):
+## Deploying on Render
 
-```bash
-gunicorn -w 1 -b 0.0.0.0:5000 render:app
-```
+- Root Directory: ai-service
+- Build Command: pip install -r requirements.txt
+- Start Command: gunicorn -w 1 -b 0.0.0.0:$PORT app:app
+- Python version: set via runtime.txt (python-3.10.13)
+
+Troubleshooting:
+- If build fails on Pillow/numpy, ensure the Python version matches runtime.txt and that Render is using a compatible version.
+- Logs mentioning "No matching distribution" usually indicate an incompatible Python version; redeploy after updating runtime.txt.
 
 ## Environment Variables
 
-- `PORT`: Port to run the service on (default: 5000)
+- `PORT`: Port to run the service on (Render provides this)
 - `TWILIO_ACCOUNT_SID`: Twilio Account SID (optional, for downloading Twilio media)
 - `TWILIO_AUTH_TOKEN`: Twilio Auth Token (optional, for downloading Twilio media)
 
