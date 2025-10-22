@@ -101,7 +101,12 @@ function createProductCard(product) {
         imageUrl = product.image_url;
       } else {
         // Otherwise, construct the full URL
-        imageUrl = `${API_BASE_URL}${product.image_url}`;
+        // Make sure we don't double the slashes
+        if (product.image_url.startsWith('/')) {
+          imageUrl = `${API_BASE_URL}${product.image_url}`;
+        } else {
+          imageUrl = `${API_BASE_URL}/${product.image_url}`;
+        }
       }
     }
     const createdDate = new Date(product.createdAt).toLocaleDateString();

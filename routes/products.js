@@ -194,7 +194,9 @@ router.post('/create', async (req, res) => {
       quality_score: 75
     });
 
+    console.log('💾 Saving manual product to database:', JSON.stringify(newProduct, null, 2));
     await newProduct.save();
+    console.log('✅ Manual product saved to database. Product ID:', newProduct._id);
 
     // Send confirmation notification via WhatsApp
     try {

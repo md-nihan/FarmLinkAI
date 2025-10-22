@@ -10,6 +10,19 @@ const crypto = require('crypto');
 
 const MessagingResponse = twilio.twiml.MessagingResponse;
 
+// Initialize Twilio client
+let twilioClient;
+try {
+  twilioClient = twilio(
+    process.env.TWILIO_ACCOUNT_SID,
+    process.env.TWILIO_AUTH_TOKEN
+  );
+  console.log('✅ Twilio client initialized successfully');
+} catch (error) {
+  console.error('❌ Failed to initialize Twilio client:', error.message);
+  twilioClient = null;
+}
+
 // Function to download and save image from Twilio
 async function downloadAndSaveImage(imageUrl) {
   try {
@@ -23,7 +36,8 @@ async function downloadAndSaveImage(imageUrl) {
         username: process.env.TWILIO_ACCOUNT_SID,
         password: process.env.TWILIO_AUTH_TOKEN
       },
-      responseType: 'arraybuffer'
+      responseType: 'arraybuffer',
+      timeout: 30000 // 30 second timeout
     });
     
     // Generate unique filename
@@ -42,6 +56,7 @@ async function downloadAndSaveImage(imageUrl) {
     return publicUrl;
   } catch (error) {
     console.error('❌ Error downloading image:', error.message);
+    console.error('Error stack:', error.stack);
     return null;
   }
 }
@@ -153,17 +168,22 @@ router.post('/', async (req, res) => {
     console.log(`📲 Sending WhatsApp confirmation to ${fromNumber}:`);
     console.log(confirmationMsg);
     
-    try {
-      // Send the actual WhatsApp message
-      await twilioClient.messages.create({
-        body: confirmationMsg,
-        from: process.env.TWILIO_WHATSAPP_NUMBER,
-        to: `whatsapp:${fromNumber}`
-      });
-      console.log(`✅ WhatsApp confirmation sent successfully to ${fromNumber}`);
-    } catch (msgError) {
-      console.error(`❌ Failed to send WhatsApp confirmation to ${fromNumber}:`, msgError.message);
-      // Continue anyway - don't fail the whole process
+    // Check if Twilio client is available
+    if (!twilioClient) {
+      console.error('❌ Twilio client not initialized. Cannot send WhatsApp confirmation.');
+    } else {
+      try {
+        // Send the actual WhatsApp message
+        await twilioClient.messages.create({
+          body: confirmationMsg,
+          from: process.env.TWILIO_WHATSAPP_NUMBER,
+          to: `whatsapp:${fromNumber}`
+        });
+        console.log(`✅ WhatsApp confirmation sent successfully to ${fromNumber}`);
+      } catch (msgError) {
+        console.error(`❌ Failed to send WhatsApp confirmation to ${fromNumber}:`, msgError.message);
+        // Continue anyway - don't fail the whole process
+      }
     }
 
     twiml.message(confirmationMsg);
@@ -172,13 +192,16 @@ router.post('/', async (req, res) => {
     // Save to database in background
     setImmediate(async () => {
       try {
+        console.log('💾 Saving product to database:', JSON.stringify(newProduct, null, 2));
         await newProduct.save();
         console.log('✅ Product saved to database (post-response)');
+        console.log('Product ID:', newProduct._id);
         
         // Also update the frontend in real-time if WebSocket is available
         // This would require implementing WebSocket connections
       } catch (e) {
         console.error('❌ Failed to save product:', e.message);
+        console.error('Error stack:', e.stack);
       }
 
       // Fire-and-forget: call AI service to refine quality grade if image is provided
@@ -198,7 +221,7 @@ router.post('/', async (req, res) => {
             image_url: imageFullUrl,
             product_name: productName
           }, {
-            timeout: 10000 // 10 second timeout
+            timeout: 30000 // 30 second timeout
           });
 
           if (aiResponse.data && aiResponse.data.grade) {
@@ -210,6 +233,7 @@ router.post('/', async (req, res) => {
           }
         } catch (aiError) {
           console.error('⚠️ AI service error (async):', aiError.message);
+          console.error('Error stack:', aiError.stack);
         }
       }
     });

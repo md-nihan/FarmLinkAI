@@ -30,12 +30,12 @@ def download_image(image_url):
             
             if account_sid and auth_token:
                 from requests.auth import HTTPBasicAuth
-                response = requests.get(image_url, auth=HTTPBasicAuth(account_sid, auth_token), timeout=10)
+                response = requests.get(image_url, auth=HTTPBasicAuth(account_sid, auth_token), timeout=30)
             else:
                 # Try without auth (for sandbox)
-                response = requests.get(image_url, headers=headers, timeout=10)
+                response = requests.get(image_url, headers=headers, timeout=30)
         else:
-            response = requests.get(image_url, headers=headers, timeout=10)
+            response = requests.get(image_url, headers=headers, timeout=30)
         
         response.raise_for_status()
         return Image.open(BytesIO(response.content))
