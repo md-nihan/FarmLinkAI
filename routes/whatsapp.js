@@ -124,7 +124,7 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // Create product object
+    // Create product object with a safe default grade first (respond fast to WhatsApp)
     const newProduct = new Product({
       farmer_phone: fromNumber,
       farmer_name: farmer.name,
@@ -133,51 +133,15 @@ router.post('/', async (req, res) => {
       quantity: quantity,
       image_url: imageUrl,
       status: 'available',
-      quality_grade: 'pending'
+      quality_grade: 'Grade B',
+      quality_score: 75
     });
 
-    // Call AI service for quality grading if image is provided
-    if (imageUrl) {
-      try {
-        console.log('🤖 Calling AI service for quality grading...');
-        const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:5000';
-        
-        // Convert local path to full URL for AI service
-        // Prefer explicit BACKEND_PUBLIC_URL; otherwise derive from request headers
-        const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
-        const host = req.headers['x-forwarded-host'] || req.headers.host;
-        const backendBase = process.env.BACKEND_PUBLIC_URL || `${proto}://${host}`;
-        const imageFullUrl = imageUrl.startsWith('http') ? imageUrl : `${backendBase}${imageUrl}`;
-        
-        const aiResponse = await axios.post(`${aiServiceUrl}/grade`, {
-          image_url: imageFullUrl,
-          product_name: productName
-        }, {
-          timeout: 10000 // 10 second timeout
-        });
-
-        if (aiResponse.data && aiResponse.data.grade) {
-          newProduct.quality_grade = aiResponse.data.grade;
-          newProduct.quality_score = aiResponse.data.score || 0;
-          console.log(`✅ AI Grade: ${aiResponse.data.grade} (Score: ${aiResponse.data.score})`);
-        }
-      } catch (aiError) {
-        console.error('⚠️ AI service error:', aiError.message);
-        // Continue without AI grade - set to default
-        newProduct.quality_grade = 'Grade B';
-        newProduct.quality_score = 75;
-      }
-    } else {
-      // No image, assign default grade
-      newProduct.quality_grade = 'Grade B';
-      newProduct.quality_score = 75;
-    }
-
-    // Save to database
+    // Save to database quickly before any AI work
     await newProduct.save();
-    console.log('✅ Product saved to database');
+    console.log('✅ Product saved to database (pre-AI)');
 
-    // Send confirmation to farmer
+    // Send immediate confirmation to farmer (avoid Twilio timeout)
     const confirmationMsg = `✅ Product Listed Successfully!\n\n` +
       `📦 Product: ${productName}\n` +
       `⚖️ Quantity: ${quantity}\n` +
@@ -187,6 +151,40 @@ router.post('/', async (req, res) => {
 
     twiml.message(confirmationMsg);
     res.type('text/xml').send(twiml.toString());
+
+    // Fire-and-forget: call AI service to refine quality grade if image is provided
+    if (imageUrl) {
+      setImmediate(async () => {
+        try {
+          console.log('🤖 Calling AI service for quality grading (async)...');
+          const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:5000';
+
+          // Convert local path to full URL for AI service
+          // Prefer explicit BACKEND_PUBLIC_URL; otherwise derive from request headers
+          const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+          const host = req.headers['x-forwarded-host'] || req.headers.host;
+          const backendBase = process.env.BACKEND_PUBLIC_URL || `${proto}://${host}`;
+          const imageFullUrl = imageUrl.startsWith('http') ? imageUrl : `${backendBase}${imageUrl}`;
+
+          const aiResponse = await axios.post(`${aiServiceUrl}/grade`, {
+            image_url: imageFullUrl,
+            product_name: productName
+          }, {
+            timeout: 10000 // 10 second timeout
+          });
+
+          if (aiResponse.data && aiResponse.data.grade) {
+            await Product.findByIdAndUpdate(newProduct._id, {
+              quality_grade: aiResponse.data.grade,
+              quality_score: aiResponse.data.score || 0
+            });
+            console.log(`✅ AI Grade saved: ${aiResponse.data.grade} (Score: ${aiResponse.data.score})`);
+          }
+        } catch (aiError) {
+          console.error('⚠️ AI service error (async):', aiError.message);
+        }
+      });
+    }
 
   } catch (error) {
     console.error('❌ Webhook Error:', error);
