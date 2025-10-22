@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌾 Test Product Listing - FarmLink AI</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Animated background -->
+    <div class="background-animation">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="glass-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-section">
+                    <h1 class="logo">🌾 FarmLink AI - Test Product Listing</h1>
+                    <p class="tagline">Simulate WhatsApp Product Listing</p>
+                </div>
+                <nav class="nav-menu">
+                    <a href="index.html" class="nav-link">Marketplace</a>
+                    <a href="admin.html" class="nav-link">Admin</a>
+                    <a href="test-listing.html" class="nav-link active">Test Listing</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <section class="products-section">
+        <div class="container">
+            <div class="glass-card section-card" style="max-width: 600px; margin: 40px auto; padding: 40px;">
+                <h2 style="margin-bottom: 10px;">📱 Simulate WhatsApp Product Listing</h2>
+                <p style="margin-bottom: 30px; opacity: 0.9;">
+                    This is a test page to simulate how farmers would list products via WhatsApp. 
+                    In production, farmers send WhatsApp messages instead of using this form.
+                </p>
+
+                <div class="form-info" style="margin-bottom: 30px;">
+                    <p><strong>ℹ️ How it works:</strong></p>
+                    <p>1. Admin adds farmer in Admin Panel</p>
+                    <p>2. Farmer sends WhatsApp: "Tomato 30 kg" + photo</p>
+                    <p>3. AI grades quality automatically</p>
+                    <p>4. Product appears on marketplace</p>
+                    <p style="margin-top: 10px;"><em>For now, use this page to test the workflow!</em></p>
+                </div>
+
+                <form id="test-listing-form" class="farmer-form">
+                    <div class="form-group">
+                        <label for="farmer-phone">Farmer Phone Number *</label>
+                        <input type="tel" id="farmer-phone" required placeholder="+1234567890">
+                        <small style="opacity: 0.8;">Must match a farmer registered in Admin Panel</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="product-name">Product Name *</label>
+                        <input type="text" id="product-name" required placeholder="e.g., Tomato, Onion, Potato">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="quantity">Quantity *</label>
+                        <input type="text" id="quantity" required placeholder="e.g., 30 kg, 50 kg, 100 kg">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="image-url">Image URL (Optional)</label>
+                        <input type="url" id="image-url" placeholder="https://example.com/tomato.jpg">
+                        <small style="opacity: 0.8;">Leave empty for default grade B</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;">
+                        <span class="btn-icon">📤</span>
+                        List Product
+                    </button>
+                </form>
+
+                <div id="result-message" style="margin-top: 20px; display: none;"></div>
+            </div>
+
+            <!-- How to Enable Real WhatsApp -->
+            <div class="glass-card section-card" style="max-width: 600px; margin: 20px auto; padding: 30px;">
+                <h3 style="margin-bottom: 20px;">🚀 Enable Real WhatsApp Integration</h3>
+                
+                <div style="background: rgba(79, 172, 254, 0.2); padding: 15px; border-radius: 10px; border-left: 3px solid #4facfe; margin-bottom: 20px;">
+                    <p style="margin: 0;"><strong>To receive WhatsApp messages from farmers:</strong></p>
+                </div>
+
+                <ol style="line-height: 2; opacity: 0.95;">
+                    <li><strong>Download ngrok:</strong> <a href="https://ngrok.com/download" target="_blank" style="color: #4facfe;">https://ngrok.com/download</a></li>
+                    <li><strong>Run in terminal:</strong> <code style="background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px;">ngrok http 3001</code></li>
+                    <li><strong>Copy HTTPS URL</strong> (e.g., https://abc123.ngrok.io)</li>
+                    <li><strong>Configure Twilio:</strong>
+                        <ul style="margin-top: 10px;">
+                            <li>Go to <a href="https://console.twilio.com/" target="_blank" style="color: #4facfe;">Twilio Console</a></li>
+                            <li>Messaging → WhatsApp Sandbox Settings</li>
+                            <li>Webhook: <code style="background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px;">https://YOUR-NGROK-URL/api/whatsapp</code></li>
+                        </ul>
+                    </li>
+                    <li><strong>Join sandbox</strong> from your WhatsApp</li>
+                    <li><strong>Send message:</strong> "Tomato 30 kg" to <strong>+12545705933</strong></li>
+                </ol>
+            </div>
+        </div>
+    </section>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <div class="toast-icon">✅</div>
+        <div class="toast-message">Success!</div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 FarmLink AI. Empowering farmers, nourishing communities.</p>
+        </div>
+    </footer>
+
+    <script>
+        const API_BASE_URL = window.location.origin;
+
+        document.getElementById('test-listing-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="btn-icon">⏳</span> Listing Product...';
+
+            const formData = {
+                farmer_phone: document.getElementById('farmer-phone').value.trim(),
+                product_name: document.getElementById('product-name').value.trim(),
+                quantity: document.getElementById('quantity').value.trim(),
+                image_url: document.getElementById('image-url').value.trim()
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/products/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                const resultDiv = document.getElementById('result-message');
+                resultDiv.style.display = 'block';
+
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div style="background: rgba(0, 242, 254, 0.2); padding: 20px; border-radius: 12px; border-left: 3px solid #00f2fe;">
+                            <h3 style="margin-bottom: 10px;">✅ Product Listed Successfully!</h3>
+                            <p><strong>📦 Product:</strong> ${data.product.product_name}</p>
+                            <p><strong>⚖️ Quantity:</strong> ${data.product.quantity}</p>
+                            <p><strong>⭐ Quality Grade:</strong> ${data.product.quality_grade}</p>
+                            <p><strong>🧑‍🌾 Farmer:</strong> ${data.product.farmer_name}</p>
+                            <p style="margin-top: 15px; opacity: 0.9;">
+                                <a href="index.html" style="color: #4facfe;">View on Marketplace →</a>
+                            </p>
+                        </div>
+                    `;
+
+                    // Show toast
+                    showToast('✅ Product listed successfully!', 'success');
+
+                    // Reset form
+                    e.target.reset();
+                } else {
+                    resultDiv.innerHTML = `
+                        <div style="background: rgba(255, 95, 95, 0.2); padding: 20px; border-radius: 12px; border-left: 3px solid #ff5f5f;">
+                            <h3 style="margin-bottom: 10px;">❌ Error</h3>
+                            <p>${data.message}</p>
+                            ${data.message.includes('Farmer not found') ? 
+                                '<p style="margin-top: 10px;"><a href="admin.html" style="color: #ff5f5f;">Add Farmer in Admin Panel →</a></p>' : 
+                                ''}
+                        </div>
+                    `;
+                    showToast(data.message, 'error');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result-message').innerHTML = `
+                    <div style="background: rgba(255, 95, 95, 0.2); padding: 20px; border-radius: 12px; border-left: 3px solid #ff5f5f;">
+                        <h3 style="margin-bottom: 10px;">❌ Error</h3>
+                        <p>Failed to connect to server. Please make sure the backend is running.</p>
+                    </div>
+                `;
+                showToast('Error connecting to server', 'error');
+            }
+
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span class="btn-icon">📤</span> List Product';
+        });
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = toast.querySelector('.toast-message');
+            const toastIcon = toast.querySelector('.toast-icon');
+            
+            toastMessage.textContent = message;
+            toastIcon.textContent = type === 'success' ? '✅' : '❌';
+            
+            toast.classList.add('active');
+            
+            setTimeout(() => {
+                toast.classList.remove('active');
+            }, 4000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌾 FarmLink AI - Admin Login</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <!-- Animated background -->
+    <div class="background-animation">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="glass-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-section">
+                    <h1 class="logo">🌾 FarmLink AI</h1>
+                    <p class="tagline">Farm to Table, Powered by AI</p>
+                </div>
+                <nav class="nav-menu">
+                    <a href="index.html" class="nav-link">Marketplace</a>
+                    <a href="register.html" class="nav-link">Register as Farmer</a>
+                    <a href="login.html" class="nav-link active">Admin Login</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+        <div class="container">
+            <!-- Login Section -->
+            <section class="add-farmer-section">
+                <div class="glass-card section-card login-card">
+                    <div class="section-header-inline">
+                        <h2>🔐 Admin Login</h2>
+                    </div>
+                    
+                    <form id="login-form" class="farmer-form">
+                        <div class="form-group">
+                            <label for="username">Username *</label>
+                            <input type="text" id="username" required placeholder="Enter your username">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="password">Password *</label>
+                            <input type="password" id="password" required placeholder="Enter your password">
+                        </div>
+                        
+                        <div class="form-info">
+                            <p>ℹ️ Only authorized administrators can access this panel.</p>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <span class="btn-icon">🔐</span>
+                            Login
+                        </button>
+                    </form>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <div class="toast-icon">✅</div>
+        <div class="toast-message">Success!</div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 FarmLink AI. Empowering farmers, nourishing communities.</p>
+        </div>
+    </footer>
+
+    <script>
+        // API Configuration
+        const API_BASE_URL = window.location.origin;
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            setupLoginForm();
+            
+            // Check if already logged in
+            const token = localStorage.getItem('adminToken');
+            if (token) {
+                // Redirect to admin panel
+                window.location.href = 'admin.html';
+            }
+        });
+
+        // Setup login form
+        function setupLoginForm() {
+            const form = document.getElementById('login-form');
+            
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const username = document.getElementById('username').value.trim();
+                const password = document.getElementById('password').value.trim();
+                
+                if (!username || !password) {
+                    showToast('Please fill in all fields', 'error');
+                    return;
+                }
+                
+                try {
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Logging in...';
+                    
+                    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ username, password })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success && data.token) {
+                        // Store token in localStorage
+                        localStorage.setItem('adminToken', data.token);
+                        localStorage.setItem('adminData', JSON.stringify(data.admin));
+                        
+                        showToast('Login successful!', 'success');
+                        
+                        // Redirect to admin panel after a short delay
+                        setTimeout(() => {
+                            window.location.href = 'admin.html';
+                        }, 1000);
+                    } else {
+                        showToast(data.message || 'Login failed', 'error');
+                    }
+                    
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<span class="btn-icon">🔐</span> Login';
+                    
+                } catch (error) {
+                    console.error('Error logging in:', error);
+                    showToast('An error occurred. Please try again.', 'error');
+                    
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<span class="btn-icon">🔐</span> Login';
+                }
+            });
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = toast.querySelector('.toast-message');
+            const toastIcon = toast.querySelector('.toast-icon');
+            
+            toastMessage.textContent = message;
+            toastIcon.textContent = type === 'success' ? '✅' : '❌';
+            
+            toast.classList.add('active');
+            
+            setTimeout(() => {
+                toast.classList.remove('active');
+            }, 4000);
+        }
+    </script>
+</body>
+</html>

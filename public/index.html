@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌾 FarmLink AI - Fresh Produce Marketplace</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Animated background -->
+    <div class="background-animation">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="glass-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-section">
+                    <h1 class="logo">🌾 FarmLink AI</h1>
+                    <p class="tagline">Farm to Table, Powered by AI</p>
+                </div>
+                <nav class="nav-menu">
+                    <a href="index.html" class="nav-link active">Marketplace</a>
+                    <a href="register.html" class="nav-link">Register as Farmer</a>
+                    <a href="admin.html" class="nav-link">Admin</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h2 class="hero-title animate-fade-in">Fresh Produce, Directly from Farmers</h2>
+                <p class="hero-subtitle animate-fade-in-delay">AI-Verified Quality • Fair Prices • Local & Fresh</p>
+                <div class="hero-stats">
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon">🌱</div>
+                        <div class="stat-value" id="total-products">0</div>
+                        <div class="stat-label">Fresh Products</div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon">🧑‍🌾</div>
+                        <div class="stat-value">100%</div>
+                        <div class="stat-label">Direct from Farmers</div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon">⭐</div>
+                        <div class="stat-value">AI</div>
+                        <div class="stat-label">Quality Verified</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Products Section -->
+    <section class="products-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Available Products</h2>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="a">Grade A</button>
+                    <button class="filter-btn" data-filter="b">Grade B</button>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading" class="loading-container">
+                <div class="loader"></div>
+                <p>Loading fresh produce...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <div class="empty-icon">📦</div>
+                <h3>No Products Available</h3>
+                <p>Farmers haven't listed any products yet. Check back soon!</p>
+            </div>
+
+            <!-- Products Grid -->
+            <div id="products-grid" class="products-grid">
+                <!-- Products will be dynamically loaded here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Order Modal -->
+    <div id="order-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content glass-card">
+            <button class="modal-close" onclick="closeOrderModal()">&times;</button>
+            <div class="modal-header">
+                <h3>🛒 Place Order</h3>
+            </div>
+            <div class="modal-body">
+                <div id="order-product-info"></div>
+                <form id="order-form">
+                    <div class="form-group">
+                        <label for="buyer-name">Your Name *</label>
+                        <input type="text" id="buyer-name" required placeholder="Enter your name">
+                    </div>
+                    <div class="form-group">
+                        <label for="buyer-phone">Phone Number *</label>
+                        <input type="tel" id="buyer-phone" required placeholder="+91 XXXXXXXXXX">
+                    </div>
+                    <div class="form-info">
+                        <p>ℹ️ The farmer will receive your details via WhatsApp to arrange delivery and payment.</p>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeOrderModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Confirm Order</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div id="toast" class="toast">
+        <div class="toast-icon">✅</div>
+        <div class="toast-message">Order placed successfully!</div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 FarmLink AI. Empowering farmers, nourishing communities.</p>
+        </div>
+    </footer>
+
+    <script src="js/marketplace.js"></script>
+</body>
+</html>

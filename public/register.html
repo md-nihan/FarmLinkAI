@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌾 FarmLink AI - Farmer Registration</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <!-- Animated background -->
+    <div class="background-animation">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="glass-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-section">
+                    <h1 class="logo">🌾 FarmLink AI</h1>
+                    <p class="tagline">Farm to Table, Powered by AI</p>
+                </div>
+                <nav class="nav-menu">
+                    <a href="index.html" class="nav-link">Marketplace</a>
+                    <a href="register.html" class="nav-link active">Register as Farmer</a>
+                    <a href="admin.html" class="nav-link">Admin Login</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+        <div class="container">
+            <!-- Registration Section -->
+            <section class="add-farmer-section">
+                <div class="glass-card section-card">
+                    <div class="section-header-inline">
+                        <h2>🌱 Register as a Farmer</h2>
+                    </div>
+                    
+                    <div id="registration-success" class="success-message" style="display: none;">
+                        <div class="success-icon">✅</div>
+                        <h3>Registration Successful!</h3>
+                        <p>Thank you for registering! Your account is under review. We will contact you shortly for verification.</p>
+                        <p>You will receive a WhatsApp message once your account is approved.</p>
+                    </div>
+                    
+                    <form id="register-farmer-form" class="farmer-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="farmer-name">Full Name *</label>
+                                <input type="text" id="farmer-name" required placeholder="e.g., Parvati Devi">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="farmer-phone">WhatsApp Number (with country code) *</label>
+                                <input type="tel" id="farmer-phone" required placeholder="e.g., +911234567890">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="farmer-village">Village *</label>
+                                <input type="text" id="farmer-village" required placeholder="e.g., Hosur">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="farmer-district">District *</label>
+                                <input type="text" id="farmer-district" required placeholder="e.g., Bengaluru Rural">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="farmer-crops">Crops Grown (Optional)</label>
+                            <input type="text" id="farmer-crops" placeholder="e.g., Tomato, Onion, Potato">
+                        </div>
+                        
+                        <div class="form-info">
+                            <p>ℹ️ After registration, your account will be reviewed by our team. You will receive a WhatsApp message once approved.</p>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <span class="btn-icon">🌱</span>
+                            Register as Farmer
+                        </button>
+                    </form>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <div class="toast-icon">✅</div>
+        <div class="toast-message">Success!</div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 FarmLink AI. Empowering farmers, nourishing communities.</p>
+        </div>
+    </footer>
+
+    <script>
+        // API Configuration
+        const API_BASE_URL = window.location.origin;
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            setupRegistrationForm();
+        });
+
+        // Setup registration form
+        function setupRegistrationForm() {
+            const form = document.getElementById('register-farmer-form');
+            
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const name = document.getElementById('farmer-name').value.trim();
+                const phone = document.getElementById('farmer-phone').value.trim();
+                const village = document.getElementById('farmer-village').value.trim();
+                const district = document.getElementById('farmer-district').value.trim();
+                const crops = document.getElementById('farmer-crops').value.trim();
+                
+                if (!name || !phone || !village || !district) {
+                    showToast('Please fill in all required fields', 'error');
+                    return;
+                }
+                
+                try {
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Registering...';
+                    
+                    const response = await fetch(`${API_BASE_URL}/api/farmers/register`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ name, phone, village, district, crops })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Show success message
+                        document.getElementById('registration-success').style.display = 'block';
+                        form.style.display = 'none';
+                        showToast('Registration successful!', 'success');
+                    } else {
+                        showToast(data.message || 'Registration failed', 'error');
+                    }
+                    
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<span class="btn-icon">🌱</span> Register as Farmer';
+                    
+                } catch (error) {
+                    console.error('Error registering farmer:', error);
+                    showToast('An error occurred. Please try again.', 'error');
+                    
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<span class="btn-icon">🌱</span> Register as Farmer';
+                }
+            });
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = toast.querySelector('.toast-message');
+            const toastIcon = toast.querySelector('.toast-icon');
+            
+            toastMessage.textContent = message;
+            toastIcon.textContent = type === 'success' ? '✅' : '❌';
+            
+            toast.classList.add('active');
+            
+            setTimeout(() => {
+                toast.classList.remove('active');
+            }, 4000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌾 FarmLink AI - Admin Panel</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <!-- Animated background -->
+    <div class="background-animation">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="glass-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-section">
+                    <h1 class="logo">🌾 FarmLink AI - Admin</h1>
+                    <p class="tagline">Farmer Management Dashboard</p>
+                </div>
+                <nav class="nav-menu">
+                    <a href="index.html" class="nav-link">Marketplace</a>
+                    <a href="register.html" class="nav-link">Register as Farmer</a>
+                    <a href="admin.html" class="nav-link active">Admin</a>
+                    <button class="btn btn-small btn-secondary" onclick="logout()" style="margin-left: 10px;">
+                        Logout
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+        <div class="container">
+            <!-- Stats Overview -->
+            <section class="stats-section">
+                <div class="stats-grid">
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon">🧑‍🌾</div>
+                        <div class="stat-value" id="total-farmers">0</div>
+                        <div class="stat-label">Total Farmers</div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-value" id="active-farmers">0</div>
+                        <div class="stat-label">Active Farmers</div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon">📦</div>
+                        <div class="stat-value" id="total-products-admin">0</div>
+                        <div class="stat-label">Total Products</div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon">🛒</div>
+                        <div class="stat-value" id="total-orders">0</div>
+                        <div class="stat-label">Orders Placed</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Add Farmer Section -->
+            <section class="add-farmer-section">
+                <div class="glass-card section-card">
+                    <div class="section-header-inline">
+                        <h2>⏳ Pending Farmer Approvals</h2>
+                    </div>
+                    
+                    <!-- Loading State -->
+                    <div id="pending-farmers-loading" class="loading-container" style="display: none;">
+                        <div class="loader"></div>
+                        <p>Loading pending farmers...</p>
+                    </div>
+                    
+                    <!-- Empty State -->
+                    <div id="pending-farmers-empty" class="empty-state" style="display: none;">
+                        <div class="empty-icon">✅</div>
+                        <h3>No Pending Farmers</h3>
+                        <p>All farmers are approved or there are no registrations yet.</p>
+                    </div>
+                    
+                    <!-- Pending Farmers Table -->
+                    <div id="pending-farmers-table-container" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="farmers-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Phone</th>
+                                        <th>Location</th>
+                                        <th>Crops</th>
+                                        <th>Registered</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pending-farmers-table-body">
+                                    <!-- Pending farmers will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Farmers List Section -->
+            <section class="farmers-list-section">
+                <div class="glass-card section-card">
+                    <div class="section-header-inline">
+                        <h2>👥 Registered Farmers</h2>
+                        <button class="btn btn-secondary" onclick="loadFarmers()">
+                            🔄 Refresh
+                        </button>
+                    </div>
+                    
+                    <!-- Loading State -->
+                    <div id="farmers-loading" class="loading-container" style="display: none;">
+                        <div class="loader"></div>
+                        <p>Loading farmers...</p>
+                    </div>
+                    
+                    <!-- Empty State -->
+                    <div id="farmers-empty" class="empty-state" style="display: none;">
+                        <div class="empty-icon">👤</div>
+                        <h3>No Farmers Registered</h3>
+                        <p>Add your first farmer using the form above.</p>
+                    </div>
+                    
+                    <!-- Farmers Table -->
+                    <div id="farmers-table-container" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="farmers-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Phone</th>
+                                        <th>Location</th>
+                                        <th>Status</th>
+                                        <th>Joined</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="farmers-table-body">
+                                    <!-- Farmers will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- All Products Section -->
+            <section class="all-products-section">
+                <div class="glass-card section-card">
+                    <div class="section-header-inline">
+                        <h2>📦 All Products</h2>
+                        <button class="btn btn-secondary" onclick="loadAllProducts()">
+                            🔄 Refresh
+                        </button>
+                    </div>
+                    
+                    <div id="products-table-container">
+                        <!-- Products will be loaded here -->
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Edit Farmer Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content glass-card">
+            <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            <div class="modal-header">
+                <h3>✏️ Edit Farmer</h3>
+            </div>
+            <div class="modal-body">
+                <form id="edit-farmer-form">
+                    <input type="hidden" id="edit-farmer-id">
+                    
+                    <div class="form-group">
+                        <label for="edit-farmer-name">Farmer Name *</label>
+                        <input type="text" id="edit-farmer-name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="edit-farmer-phone">Phone Number *</label>
+                        <input type="tel" id="edit-farmer-phone" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="edit-farmer-location">Location</label>
+                        <input type="text" id="edit-farmer-location">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="edit-farmer-status">Status</label>
+                        <select id="edit-farmer-status" class="form-select">
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <div class="toast-icon">✅</div>
+        <div class="toast-message">Success!</div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 FarmLink AI Admin Panel. Empowering farmers, nourishing communities.</p>
+        </div>
+    </footer>
+
+    <script src="js/admin.js"></script>
+</body>
+</html>
