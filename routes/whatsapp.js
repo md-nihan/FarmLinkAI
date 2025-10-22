@@ -154,9 +154,18 @@ router.post('/', async (req, res) => {
       
       if (localImagePath) {
         // Construct full URL for the image
-        const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
-        const host = req.headers['x-forwarded-host'] || req.headers.host;
-        const backendBase = process.env.BACKEND_PUBLIC_URL || `${proto}://${host}` || 'https://farmlinkai-7.onrender.com';
+        // Use BACKEND_PUBLIC_URL if set, otherwise derive from request or use localhost for local dev
+        let backendBase;
+        if (process.env.BACKEND_PUBLIC_URL) {
+          backendBase = process.env.BACKEND_PUBLIC_URL;
+        } else if (process.env.NODE_ENV === 'production') {
+          const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+          const host = req.headers['x-forwarded-host'] || req.headers.host;
+          backendBase = `${proto}://${host}`;
+        } else {
+          // For local development, use localhost
+          backendBase = 'http://localhost:3001';
+        }
         
         // Ensure we don't have double slashes
         if (localImagePath.startsWith('/')) {

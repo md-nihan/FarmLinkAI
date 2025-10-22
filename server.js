@@ -99,18 +99,45 @@ const connectDB = async () => {
 // Start Server
 const PORT = process.env.PORT || 3001;
 
+// Determine the public URL for the backend
+const getBackendPublicUrl = (req) => {
+  // Use environment variable if set
+  if (process.env.BACKEND_PUBLIC_URL) {
+    return process.env.BACKEND_PUBLIC_URL;
+  }
+  
+  // For production, derive from request headers
+  if (process.env.NODE_ENV === 'production') {
+    const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    return `${proto}://${host}`;
+  }
+  
+  // For local development, use localhost
+  return `http://localhost:${PORT}`;
+};
+
 const startServer = async () => {
   // Start server first; DB connects in background/retries
   app.listen(PORT, '0.0.0.0', async () => {
+    // Get the actual backend URL
+    // Create a mock request object for getting the URL
+    const mockReq = {
+      headers: {},
+      secure: false
+    };
+    
+    const backendUrl = getBackendPublicUrl(mockReq);
+    
     console.log(`
     🚀 FarmLink AI Server Started!
     
-    📱 Server running at: ${process.env.BACKEND_PUBLIC_URL || 'https://farmlinkai-7.onrender.com'}
-    🌾 Marketplace: ${process.env.BACKEND_PUBLIC_URL || 'https://farmlinkai-7.onrender.com'}
-    👨‍💼 Admin Panel: ${process.env.BACKEND_PUBLIC_URL || 'https://farmlinkai-7.onrender.com'}/admin.html
+    📱 Server running at: ${backendUrl}
+    🌾 Marketplace: ${backendUrl}
+    👨‍💼 Admin Panel: ${backendUrl}/admin.html
     
-    💬 WhatsApp Webhook: ${process.env.BACKEND_PUBLIC_URL || 'https://farmlinkai-7.onrender.com'}/api/whatsapp
-    📊 API Health: ${process.env.BACKEND_PUBLIC_URL || 'https://farmlinkai-7.onrender.com'}/api/health
+    💬 WhatsApp Webhook: ${backendUrl}/api/whatsapp
+    📊 API Health: ${backendUrl}/api/health
     `);
 
     // Kick off DB connect attempts
