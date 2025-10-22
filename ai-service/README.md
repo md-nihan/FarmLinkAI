@@ -65,11 +65,11 @@ python app.py
 - Root Directory: ai-service
 - Build Command: pip install -r requirements.txt
 - Start Command: gunicorn -w 1 -b 0.0.0.0:$PORT app:app
-- Python version: set via runtime.txt (python-3.10.13)
+- Python version: Render may default to Python 3.13; wheels are pinned to support it. If you must pin, use runtime.txt (python-3.13.0).
 
 Troubleshooting:
-- If build fails on Pillow/numpy, ensure the Python version matches runtime.txt and that Render is using a compatible version.
-- Logs mentioning "No matching distribution" usually indicate an incompatible Python version; redeploy after updating runtime.txt.
+- If build fails on Pillow with source build logs, ensure you're using a Pillow version with wheels for your Python (we pin to 11.0.0 which has Py3.13 wheels).
+- If Render ignores runtime.txt and still uses Py3.13, this config will still succeed.
 
 ## Environment Variables
 
@@ -83,7 +83,6 @@ Troubleshooting:
 - Pillow
 - Requests
 - python-dotenv
-- numpy
 - gunicorn
 
 ## License
