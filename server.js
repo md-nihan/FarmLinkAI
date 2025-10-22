@@ -39,17 +39,30 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// MongoDB Connection
+// MongoDB Connection with retry (do not crash app immediately)
 const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/farmlink', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    console.log('✅ MongoDB Connected Successfully');
-  } catch (error) {
-    console.error('❌ MongoDB Connection Error:', error.message);
-    process.exit(1);
+  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/farmlink';
+  const maxAttempts = 10;
+  let attempt = 0;
+
+  while (attempt < maxAttempts) {
+    try {
+      attempt += 1;
+      await mongoose.connect(uri, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+      });
+      console.log('✅ MongoDB Connected Successfully');
+      return;
+    } catch (error) {
+      const backoff = Math.min(30000, 2000 * attempt); // up to 30s
+      console.error(`❌ MongoDB Connection Error (attempt ${attempt}/${maxAttempts}):`, error.message);
+      if (attempt >= maxAttempts) {
+        console.error('⚠️ Max MongoDB connection attempts reached. Server will continue running; API will return errors until DB is reachable.');
+        return;
+      }
+      await new Promise((res) => setTimeout(res, backoff));
+    }
   }
 };
 
@@ -57,9 +70,8 @@ const connectDB = async () => {
 const PORT = process.env.PORT || 3001;
 
 const startServer = async () => {
-  await connectDB();
-  
-  app.listen(PORT, '0.0.0.0', () => {
+  // Start server first; DB connects in background/retries
+  app.listen(PORT, '0.0.0.0', async () => {
     console.log(`
     🚀 FarmLink AI Server Started!
     
@@ -70,13 +82,15 @@ const startServer = async () => {
     💬 WhatsApp Webhook: http://0.0.0.0:${PORT}/api/whatsapp
     📊 API Health: http://0.0.0.0:${PORT}/api/health
     `);
+
+    // Kick off DB connect attempts
+    connectDB();
   });
 };
 
 startServer();
 
-// Handle unhandled promise rejections
+// Handle unhandled promise rejections (log but don't crash)
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled Promise Rejection:', err);
-  process.exit(1);
 });
