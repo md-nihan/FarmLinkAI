@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Loading Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .image-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        .image-card img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        .image-card .error {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+        .image-card .success {
+            color: #51cf66;
+            font-weight: bold;
+        }
+        .loading {
+            color: #ffd43b;
+        }
+        button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .status {
+            text-align: center;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📸 Image Loading Test</h1>
+        <p>Testing if product images are loading correctly on your website.</p>
+        
+        <button onclick="loadImages()">Load All Product Images</button>
+        
+        <div id="status" class="status"></div>
+        <div id="imageGrid" class="image-grid"></div>
+    </div>
+
+    <script>
+        async function loadImages() {
+            const statusDiv = document.getElementById('status');
+            const imageGrid = document.getElementById('imageGrid');
+            
+            statusDiv.innerHTML = '🔄 Loading products...';
+            imageGrid.innerHTML = '';
+            
+            try {
+                // Fetch products from API
+                const response = await fetch('/api/products');
+                const data = await response.json();
+                
+                if (!data.success) {
+                    statusDiv.innerHTML = '❌ Failed to load products';
+                    return;
+                }
+                
+                const products = data.products;
+                statusDiv.innerHTML = `✅ Loaded ${products.length} products. Testing image loading...`;
+                
+                // Display each product
+                for (const product of products) {
+                    const card = document.createElement('div');
+                    card.className = 'image-card';
+                    
+                    let imageHtml = '';
+                    let statusHtml = '';
+                    
+                    if (product.image_url) {
+                        imageHtml = `<img src="${product.image_url}" alt="${product.product_name}" onerror="handleImageError(this)" onload="handleImageLoad(this)">`;
+                        statusHtml = '<div class="loading">⏳ Loading image...</div>';
+                    } else {
+                        imageHtml = '<div style="background: #ccc; height: 200px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">No Image</div>';
+                        statusHtml = '<div class="error">❌ No image uploaded</div>';
+                    }
+                    
+                    card.innerHTML = `
+                        <h3>${product.product_name}</h3>
+                        <p>Quality: ${product.quality_grade}</p>
+                        <p>Quantity: ${product.quantity}</p>
+                        ${imageHtml}
+                        <div class="image-status">${statusHtml}</div>
+                    `;
+                    
+                    imageGrid.appendChild(card);
+                }
+                
+            } catch (error) {
+                statusDiv.innerHTML = `❌ Error loading products: ${error.message}`;
+            }
+        }
+        
+        function handleImageLoad(imgElement) {
+            const statusDiv = imgElement.parentElement.querySelector('.image-status');
+            statusDiv.innerHTML = '<div class="success">✅ Image loaded successfully</div>';
+            statusDiv.style.color = '#51cf66';
+        }
+        
+        function handleImageError(imgElement) {
+            const statusDiv = imgElement.parentElement.querySelector('.image-status');
+            statusDiv.innerHTML = '<div class="error">❌ Failed to load image</div>';
+            statusDiv.style.color = '#ff6b6b';
+            
+            // Replace with placeholder
+            imgElement.src = 'https://via.placeholder.com/300x200?text=Image+Not+Found';
+            imgElement.onerror = null; // Prevent infinite loop
+        }
+        
+        // Load images when page loads
+        window.addEventListener('load', loadImages);
+    </script>
+</body>
+</html>
