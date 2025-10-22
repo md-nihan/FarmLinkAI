@@ -43,7 +43,7 @@ git push -u origin master
    - **Name**: `farmlink-ai-ai-service`
    - **Environment**: Python 3
    - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn -w 1 -b 0.0.0.0:$PORT render:app`
+   - **Start Command**: `gunicorn -w 1 -b 0.0.0.0:$PORT app:app`
    - **Root Directory**: `ai-service`
 5. Click "Advanced" and add environment variables:
    - `PYTHON_VERSION`: `3.8.11` (or higher)
@@ -149,6 +149,11 @@ curl -X POST https://YOUR-BACKEND-URL.onrender.com/api/auth/create-admin \
    - The application now correctly uses `process.env.PORT` for Render compatibility
    - Node.js default port is 3001 for local development
    - Python AI service default port is 5000 for local development
+
+6. **Python Build Backend Error**:
+   - Error: `pip._vendor.pyproject_hooks._impl.BackendUnavailable: Cannot import 'setuptools.build_meta'`
+   - **Solution**: The project now includes proper `pyproject.toml`, `setup.py`, and updated `requirements.txt` files
+   - Ensure you're using the latest code from the repository
 
 ### Checking Logs:
 
