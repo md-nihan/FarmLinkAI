@@ -156,7 +156,7 @@ router.post('/', async (req, res) => {
         // Construct full URL for the image
         const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
         const host = req.headers['x-forwarded-host'] || req.headers.host;
-        const backendBase = process.env.BACKEND_PUBLIC_URL || `${proto}://${host}`;
+        const backendBase = process.env.BACKEND_PUBLIC_URL || `${proto}://${host}` || 'https://farmlinkai-7.onrender.com';
         
         // Ensure we don't have double slashes
         if (localImagePath.startsWith('/')) {
@@ -196,7 +196,7 @@ router.post('/', async (req, res) => {
       `⭐ Quality: ${qualityText}\n` +
       `📍 Location: ${farmer.location || 'Not specified'}\n\n` +
       `Your produce is now live on the marketplace! 🌾\n\n` +
-      `View at: ${process.env.BACKEND_PUBLIC_URL || 'http://localhost:3001'}`;
+      `View at: ${process.env.BACKEND_PUBLIC_URL || 'https://farmlinkai-7.onrender.com'}`;
 
     console.log(`📲 Sending WhatsApp confirmation to ${fromNumber}:`);
     console.log(confirmationMsg);
@@ -259,7 +259,7 @@ router.post('/', async (req, res) => {
       twiml.message(confirmationMsg);
     } else {
       // Send a basic TwiML response without WhatsApp confirmation
-      twiml.message('✅ Product listed successfully!\n\nYour produce is now live on the marketplace.\n\nView at: ' + (process.env.BACKEND_PUBLIC_URL || 'http://localhost:3001'));
+      twiml.message('✅ Product listed successfully!\n\nYour produce is now live on the marketplace.\n\nView at: ' + (process.env.BACKEND_PUBLIC_URL || 'https://farmlinkai-7.onrender.com'));
     }
 
     res.type('text/xml').send(twiml.toString());
@@ -302,7 +302,7 @@ router.post('/', async (req, res) => {
       if (imageUrl) {
         try {
           console.log('🤖 Calling AI service for quality grading (async)...');
-          const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:5000';
+          const aiServiceUrl = process.env.AI_SERVICE_URL || 'https://farmlinkai-7.onrender.com';
           
           console.log(`🔧 AI Service URL: ${aiServiceUrl}`);
 
@@ -310,7 +310,7 @@ router.post('/', async (req, res) => {
           // Prefer explicit BACKEND_PUBLIC_URL; otherwise derive from request headers
           const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
           const host = req.headers['x-forwarded-host'] || req.headers.host;
-          const backendBase = process.env.BACKEND_PUBLIC_URL || `${proto}://${host}`;
+          const backendBase = process.env.BACKEND_PUBLIC_URL || `${proto}://${host}` || 'https://farmlinkai-7.onrender.com';
           
           // Ensure we don't have double slashes
           let imageFullUrl = imageUrl;
