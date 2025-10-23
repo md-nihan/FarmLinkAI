@@ -42,6 +42,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved error messages for missing Twilio configuration
 - Added phone normalization (E.164) and WhatsApp address enforcement to reduce delivery failures
 
+## [2025-10-23] - Messaging Reliability Improvements
+
+### Added
+- Phone normalization and WhatsApp address utilities (`utils/phone.js`) enforcing E.164 and `whatsapp:+` format
+- Lazy initialization of Twilio clients when first sending a message
+- Normalization of Twilio sender number to `whatsapp:+E164` during client setup
+- `.gitignore` rule to exclude `public/uploads/`
+
+### Fixed
+- Welcome WhatsApp after admin approval not delivering (number normalization + Twilio init)
+- Order notification WhatsApp not delivering (ensured init + strict formatting)
+- Delivery failures due to inconsistent phone formats across flows
+
+### Changed
+- `routes/farmers.js`: normalize phone on registration/update; approval uses enforced `whatsapp:+E164`
+- `routes/products.js`: uses `ensureWhatsAppAddress` for notifications
+- `routes/whatsapp.js`: enforces proper `from` and `to` formats; keeps lazy client init
+
+### Verification
+- `/api/test-twilio` OK (multi-account ready)
+- `test-farmer-messaging.js` approval flow sends welcome WhatsApp
+- `test-order-notification.js` + placing order triggers WhatsApp notification
+- `/api/health` OK
+
+### Operational Notes (conversation summary)
+- Report: farmers not receiving welcome/order WhatsApps; images previously fixed
+- Actions: implemented normalization, enforced formats, ensured Twilio init, updated docs and .gitignore
+- Added late-welcome delivery on first inbound WhatsApp from approved farmer and surfaced join instructions to admin UI after approval
+- If still no delivery in production: ensure farmer has joined Twilio sandbox by sending "join organization-organized" to +14155238886 (or use TWILIO_SANDBOX_NUMBER/CODE); verify env vars `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`, `BACKEND_PUBLIC_URL`, `DEFAULT_COUNTRY_CODE`; re-approve/update farmers to normalize phones; share server logs around "Sending welcome message" for Twilio error codes
+
 ## [2025-10-23] - Image Display Fix
 
 ### Fixed

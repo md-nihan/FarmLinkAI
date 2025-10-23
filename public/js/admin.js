@@ -185,6 +185,9 @@ async function approveFarmer(farmerId, farmerName) {
         
         if (data.success) {
             showToast(`✅ Farmer ${farmerName} approved successfully!`, 'success');
+            if (data.joinInstructions) {
+                alert(`WhatsApp Join Steps for ${farmerName}:\n\n${data.joinInstructions}`);
+            }
             loadPendingFarmers();
             loadFarmers();
             loadStats();

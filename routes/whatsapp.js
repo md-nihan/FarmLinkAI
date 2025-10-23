@@ -237,7 +237,7 @@ router.post('/', async (req, res) => {
     console.log(`🖼️ Media files: ${numMedia}`);
 
     // Check if farmer exists
-    const farmer = await Farmer.findOne({ phone: fromNumber });
+    const farmer = await Farmer.findOne({ phone: normalizePhone(fromNumber) });
     
     if (!farmer) {
       twiml.message('❌ Sorry, you are not registered as a farmer. Please contact admin for registration.');
@@ -247,6 +247,28 @@ router.post('/', async (req, res) => {
     if (!farmer.isActive) {
       twiml.message('❌ Your account is currently inactive. Please contact admin.');
       return res.type('text/xml').send(twiml.toString());
+    }
+
+    // If farmer is approved but welcome not sent yet, send it now (post-join)
+    if (farmer.approvalStatus === 'approved' && !farmer.welcomeSent) {
+      try {
+        const sandboxJoinCode = process.env.TWILIO_SANDBOX_JOIN_CODE || 'organization-organized';
+        const sandboxNumber = process.env.TWILIO_SANDBOX_NUMBER || '+14155238886';
+        const welcomeMsg = `🎉 *Welcome ${farmer.name}!*\n\n` +
+          `You're now connected with FarmLink AI.\n\n` +
+          `You can list produce by sending: [Vegetable] [Quantity] (e.g., Tomato 50 kg)\n\n` +
+          `If messages ever fail, ensure you are joined to sandbox by sending \"join ${sandboxJoinCode}\" to ${sandboxNumber}.`;
+
+        await sendWhatsAppMessageWithFailover({
+          body: welcomeMsg,
+          to: `whatsapp:${normalizePhone(fromNumber)}`
+        });
+        farmer.welcomeSent = true;
+        await farmer.save();
+        console.log(`✅ Late welcome message delivered to ${fromNumber}`);
+      } catch (e) {
+        console.error('⚠️ Failed to send late welcome:', e.message);
+      }
     }
 
     // Parse message for product listing

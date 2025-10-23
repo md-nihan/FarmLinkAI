@@ -127,6 +127,11 @@ router.post('/approve/:id', verifyToken, async (req, res) => {
     console.log(`✅ Farmer approved: ${farmer.name} (${farmer.phone})`);
     console.log(`   Approved by: ${req.admin.username}`);
 
+    // Prepare join instructions for Twilio sandbox or Business API
+    const sandboxJoinCode = process.env.TWILIO_SANDBOX_JOIN_CODE || 'organization-organized';
+    const sandboxNumber = process.env.TWILIO_SANDBOX_NUMBER || '+14155238886';
+    const joinInstructions = `1) Save ${sandboxNumber} as "Twilio Sandbox"\n2) Send: join ${sandboxJoinCode}\n3) After Twilio confirms, reply with any message here.`;
+
     // Send welcome WhatsApp with join instructions using failover system
     try {
       // Ensure phone number is correctly formatted for WhatsApp
@@ -140,9 +145,9 @@ router.post('/approve/:id', verifyToken, async (req, res) => {
         `Your FarmLink AI account has been APPROVED! ✅\n\n` +
         `You can now start listing your vegetables on our marketplace.\n\n` +
         `*FIRST STEP - Join WhatsApp:*\n` +
-        `Please reply to this message with:\n\n` +
-        `*join organization-organized*\n\n` +
-        `(Just copy and send the above text)\n\n` +
+        `Please send the following message to ${sandboxNumber}:\n\n` +
+        `*join ${sandboxJoinCode}*\n\n` +
+        `(Open WhatsApp, message the Twilio sandbox number above with that text)\n\n` +
         `*After joining, listing is easy:*\n` +
         `Just send: [Vegetable] [Quantity]\n\n` +
         `Examples:\n` +
@@ -168,12 +173,16 @@ router.post('/approve/:id', verifyToken, async (req, res) => {
         to: farmerWhatsApp
       });
 
+      farmer.welcomeSent = true;
+      await farmer.save();
+
       console.log(`✅ Welcome WhatsApp sent successfully!`);
       
       res.json({
         success: true,
         message: 'Farmer approved successfully! Welcome WhatsApp sent.',
-        farmer: farmer
+        farmer: farmer,
+        joinInstructions
       });
     } catch (twilioError) {
       console.error('⚠️ Failed to send WhatsApp:', twilioError.message);
@@ -184,7 +193,8 @@ router.post('/approve/:id', verifyToken, async (req, res) => {
         success: true,
         message: 'Farmer approved! (WhatsApp notification failed - check Twilio setup)',
         farmer: farmer,
-        error: twilioError.message
+        error: twilioError.message,
+        joinInstructions
       });
     }
 
