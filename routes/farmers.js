@@ -125,7 +125,11 @@ router.post('/approve/:id', verifyToken, async (req, res) => {
 
     // Send welcome WhatsApp with join instructions using failover system
     try {
-      const farmerWhatsApp = farmer.phone.startsWith('whatsapp:') ? farmer.phone : `whatsapp:${farmer.phone}`;
+      // Ensure phone number is correctly formatted for WhatsApp
+      let farmerWhatsApp = farmer.phone;
+      if (!farmerWhatsApp.startsWith('whatsapp:')) {
+        farmerWhatsApp = `whatsapp:${farmer.phone}`;
+      }
       
       console.log(`📨 Sending welcome message to approved farmer...`);
       console.log(`   To: ${farmerWhatsApp}`);
@@ -146,6 +150,10 @@ router.post('/approve/:id', verifyToken, async (req, res) => {
         `📸 You can attach photos for better prices!\n\n` +
         `Welcome to FarmLink AI! 🧑‍🌾`;
 
+      // Import the failover WhatsApp messaging system
+      const whatsappRoutes = require('./whatsapp');
+      const sendWhatsAppMessageWithFailover = whatsappRoutes.sendWhatsAppMessageWithFailover;
+      
       await sendWhatsAppMessageWithFailover({
         body: welcomeMsg,
         to: farmerWhatsApp
@@ -161,6 +169,7 @@ router.post('/approve/:id', verifyToken, async (req, res) => {
     } catch (twilioError) {
       console.error('⚠️ Failed to send WhatsApp:', twilioError.message);
       console.error('⚠️ Error code:', twilioError.code);
+      console.error('⚠️ Error stack:', twilioError.stack);
       
       res.json({
         success: true,

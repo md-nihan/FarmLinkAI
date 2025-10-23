@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - WhatsApp messaging not working for other numbers (Twilio env vars missing)
 - Farmer registration welcome messages not being sent
 - Order notification messages not being sent to farmers
+- Phone number formatting issues in WhatsApp messages
+- Improved error handling and logging for Twilio messages
 
 ### Changed
 - Updated WhatsApp webhook to generate correct production URLs

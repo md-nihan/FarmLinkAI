@@ -102,7 +102,11 @@ router.post('/order/:productId', async (req, res) => {
 
     // Send WhatsApp notification to farmer with failover
     try {
-      const farmerWhatsApp = product.farmer_phone.startsWith('whatsapp:') ? product.farmer_phone : `whatsapp:${product.farmer_phone}`;
+      // Ensure phone number is correctly formatted for WhatsApp
+      let farmerWhatsApp = product.farmer_phone;
+      if (!farmerWhatsApp.startsWith('whatsapp:')) {
+        farmerWhatsApp = `whatsapp:${product.farmer_phone}`;
+      }
       
       console.log(`📨 Sending order notification...`);
       console.log(`   To: ${farmerWhatsApp}`);
@@ -115,6 +119,10 @@ router.post('/order/:productId', async (req, res) => {
         `📞 Contact: ${buyer_phone || 'Will call you'}\n\n` +
         `Please prepare the order for dispatch! 🚜`;
 
+      // Import the failover WhatsApp messaging system
+      const whatsappRoutes = require('./whatsapp');
+      const sendWhatsAppMessageWithFailover = whatsappRoutes.sendWhatsAppMessageWithFailover;
+      
       await sendWhatsAppMessageWithFailover({
         body: notificationMsg,
         to: farmerWhatsApp
@@ -124,6 +132,7 @@ router.post('/order/:productId', async (req, res) => {
     } catch (twilioError) {
       console.error('⚠️ Failed to send WhatsApp notification:', twilioError.message);
       console.error('⚠️ Error code:', twilioError.code);
+      console.error('⚠️ Error stack:', twilioError.stack);
       // Don't fail the order if notification fails
     }
 
