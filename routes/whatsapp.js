@@ -112,47 +112,50 @@ async function sendWhatsAppMessageWithFailover(messageOptions) {
   }
   
   const errors = [];
+
+  // Prefer a specific WhatsApp number if provided (e.g., sandbox number user joined)
+  const preferredFrom = process.env.PREFERRED_TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_SANDBOX_NUMBER || process.env.TWILIO_WHATSAPP_NUMBER;
+  let order = [...twilioClients.keys()];
+  if (preferredFrom) {
+    const idx = twilioClients.findIndex(tc => (tc.config.whatsappNumber || '').replace(/^whatsapp:/,'') === preferredFrom.replace(/^whatsapp:/,''));
+    if (idx >= 0) {
+      // Try preferred account first, then others (keeping round-robin starting point as tie-breaker)
+      const others = order.filter(i => i !== idx);
+      order = [idx, ...others];
+    }
+  } else {
+    // Fall back to round-robin order starting at current index
+    order = order.map((_, i) => (currentClientIndex + i) % twilioClients.length);
+  }
   
-  // Try each client in order until one succeeds
-  for (let i = 0; i < twilioClients.length; i++) {
-    const clientIndex = (currentClientIndex + i) % twilioClients.length;
+  // Try each client in order until one succeeds (for ANY error type)
+  for (const clientIndex of order) {
     const { client, config } = twilioClients[clientIndex];
-    
     try {
-      console.log(`📤 Attempting to send message with Twilio Account ${clientIndex + 1}...`);
-      
+      console.log(`📤 Attempting to send message with Twilio Account ${clientIndex + 1} (from ${config.whatsappNumber})...`);
       const message = await client.messages.create({
         body: messageOptions.body,
         from: config.whatsappNumber,
         to: messageOptions.to
       });
-      
       console.log(`✅ Message sent successfully with Twilio Account ${clientIndex + 1}! Message SID: ${message.sid}`);
-      
       // Update current client index for next message (round-robin)
       currentClientIndex = (clientIndex + 1) % twilioClients.length;
-      
       return message;
     } catch (error) {
       console.error(`❌ Failed to send message with Twilio Account ${clientIndex + 1}:`, error.message);
       console.error('Error code:', error.code);
-      
-      // Check if this is a credit limit error that warrants switching accounts
-      if (isCreditLimitError(error)) {
-        console.log(`⚠️ Credit limit reached for Account ${clientIndex + 1}, will try next account if available`);
-        errors.push({
-          account: clientIndex + 1,
-          error: error.message,
-          code: error.code
-        });
-        // Continue to try next account
-      } else {
-        // For other errors, re-throw immediately
-        throw error;
-      }
+      errors.push({
+        account: clientIndex + 1,
+        from: twilioClients[clientIndex].config.whatsappNumber,
+        error: error.message,
+        code: error.code
+      });
+      // Continue and try next account regardless of error type
+      continue;
     }
   }
-  
+
   // If we get here, all accounts failed
   const error = new Error(`Failed to send message with all ${twilioClients.length} Twilio accounts. Errors: ${JSON.stringify(errors)}`);
   error.code = 'ALL_ACCOUNTS_FAILED';
