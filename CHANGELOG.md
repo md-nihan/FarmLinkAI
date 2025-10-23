@@ -32,6 +32,7 @@ Actions executed fast:
 - Left existing `/api/whatsapp/test` health route for quick verification.
 - Hardened order alerts: strict E.164 + whatsapp: formatting and one-time retry after re-initializing Twilio clients.
 - Prefer sandbox sender and try ALL configured Twilio accounts on any error to avoid misrouted sends when multiple accounts exist.
+- Route order alerts through the exact Twilio number the farmer used (store `lastWhatsappFrom` on inbound and use it for outbound).
 
 Operator steps to verify now:
 1. In Twilio Console → WhatsApp Sandbox, set "When a message comes in" to:

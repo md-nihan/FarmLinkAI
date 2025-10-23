@@ -114,7 +114,7 @@ async function sendWhatsAppMessageWithFailover(messageOptions) {
   const errors = [];
 
   // Prefer a specific WhatsApp number if provided (e.g., sandbox number user joined)
-  const preferredFrom = process.env.PREFERRED_TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_SANDBOX_NUMBER || process.env.TWILIO_WHATSAPP_NUMBER;
+  const preferredFrom = messageOptions.preferredFrom || process.env.PREFERRED_TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_SANDBOX_NUMBER || process.env.TWILIO_WHATSAPP_NUMBER;
   let order = [...twilioClients.keys()];
   if (preferredFrom) {
     const idx = twilioClients.findIndex(tc => (tc.config.whatsappNumber || '').replace(/^whatsapp:/,'') === preferredFrom.replace(/^whatsapp:/,''));
@@ -234,10 +234,13 @@ router.post('/', async (req, res) => {
     const twiml = new MessagingResponse();
     const incomingMsg = req.body.Body ? req.body.Body.trim() : '';
     const fromNumber = req.body.From ? req.body.From.replace('whatsapp:', '') : '';
+    const toNumberRaw = req.body.To || '';
+    const toNumberWhatsApp = toNumberRaw && toNumberRaw.startsWith('whatsapp:') ? toNumberRaw : (toNumberRaw ? `whatsapp:${normalizePhone(toNumberRaw)}` : '');
     const numMedia = parseInt(req.body.NumMedia) || 0;
     
-    console.log(`📱 WhatsApp Message from ${fromNumber}: "${incomingMsg}"`);
+    console.log(`📱 WhatsApp Message from ${fromNumber}: \"${incomingMsg}\"`);
     console.log(`🖼️ Media files: ${numMedia}`);
+    console.log(`➡️  Delivered to our number: ${toNumberWhatsApp || 'unknown'}`);
 
     // Check if farmer exists
     const farmer = await Farmer.findOne({ phone: normalizePhone(fromNumber) });
@@ -245,6 +248,17 @@ router.post('/', async (req, res) => {
     if (!farmer) {
       twiml.message('❌ Sorry, you are not registered as a farmer. Please contact admin for registration.');
       return res.type('text/xml').send(twiml.toString());
+    }
+
+    // Update the farmer's lastWhatsappFrom if changed (used for outbound selection)
+    if (toNumberWhatsApp && farmer.lastWhatsappFrom !== toNumberWhatsApp) {
+      try {
+        farmer.lastWhatsappFrom = toNumberWhatsApp;
+        await farmer.save();
+        console.log(`🔗 Linked farmer ${farmer.phone} to from-number ${toNumberWhatsApp}`);
+      } catch (e) {
+        console.error('⚠️ Failed to save lastWhatsappFrom:', e.message);
+      }
     }
 
     if (!farmer.isActive) {

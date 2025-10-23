@@ -58,6 +58,11 @@ const farmerSchema = new mongoose.Schema({
   welcomeSentAt: {
     type: Date
   },
+  // Track which Twilio WhatsApp number (sandbox or BA) the farmer last interacted with
+  lastWhatsappFrom: {
+    type: String,
+    default: ''
+  },
   createdAt: {
     type: Date,
     default: Date.now
