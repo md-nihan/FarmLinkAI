@@ -192,3 +192,6 @@ Thumbs.db
 
 # Render deployment files
 render.yaml
+
+# Uploaded media
+public/uploads/

@@ -4,6 +4,7 @@ const twilio = require('twilio');
 const axios = require('axios');
 const Product = require('../models/Product');
 const Farmer = require('../models/Farmer');
+const { normalizePhone, ensureWhatsAppAddress } = require('../utils/phone');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -14,21 +15,36 @@ const MessagingResponse = twilio.twiml.MessagingResponse;
 let twilioClients = [];
 let currentClientIndex = 0;
 
+// Export twilioClients so other modules can access it
+module.exports.twilioClients = twilioClients;
+
 // Function to initialize multiple Twilio clients
 function initializeTwilioClients() {
-  twilioClients = [];
+  // Clear the existing array
+  twilioClients.length = 0;
   currentClientIndex = 0;
   
   // Check for multiple account configurations
   const accountConfigs = [];
   
+  console.log('🔧 Initializing Twilio clients...');
+  console.log(`   NODE_ENV: ${process.env.NODE_ENV}`);
+  console.log(`   TWILIO_ACCOUNT_SID: ${process.env.TWILIO_ACCOUNT_SID ? 'SET' : 'NOT SET'}`);
+  console.log(`   TWILIO_AUTH_TOKEN: ${process.env.TWILIO_AUTH_TOKEN ? 'SET' : 'NOT SET'}`);
+  console.log(`   TWILIO_WHATSAPP_NUMBER: ${process.env.TWILIO_WHATSAPP_NUMBER || 'NOT SET'}`);
+  
   // Check for multiple accounts (TWILIO_ACCOUNT_SID_1, TWILIO_ACCOUNT_SID_2, etc.)
   for (let i = 1; i <= 5; i++) {
     const accountSid = process.env[`TWILIO_ACCOUNT_SID_${i}`];
     const authToken = process.env[`TWILIO_AUTH_TOKEN_${i}`];
-    const whatsappNumber = process.env[`TWILIO_WHATSAPP_NUMBER_${i}`] || process.env.TWILIO_WHATSAPP_NUMBER;
+    let whatsappNumber = process.env[`TWILIO_WHATSAPP_NUMBER_${i}`] || process.env.TWILIO_WHATSAPP_NUMBER;
     
     if (accountSid && authToken) {
+      // Ensure correct WhatsApp from address (whatsapp:+E164)
+      if (whatsappNumber) {
+        const e164From = normalizePhone(whatsappNumber);
+        whatsappNumber = e164From.startsWith('whatsapp:') ? e164From : `whatsapp:${e164From}`;
+      }
       accountConfigs.push({
         accountSid,
         authToken,
@@ -40,10 +56,15 @@ function initializeTwilioClients() {
   
   // If no multiple accounts found, use the primary account
   if (accountConfigs.length === 0 && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+    let whatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER;
+    if (whatsappNumber) {
+      const e164From = normalizePhone(whatsappNumber);
+      whatsappNumber = e164From.startsWith('whatsapp:') ? e164From : `whatsapp:${e164From}`;
+    }
     accountConfigs.push({
       accountSid: process.env.TWILIO_ACCOUNT_SID,
       authToken: process.env.TWILIO_AUTH_TOKEN,
-      whatsappNumber: process.env.TWILIO_WHATSAPP_NUMBER
+      whatsappNumber: whatsappNumber
     });
     console.log('✅ Primary Twilio Account configured');
   }
@@ -65,6 +86,11 @@ function initializeTwilioClients() {
   
   if (twilioClients.length === 0) {
     console.error('❌ No Twilio accounts configured!');
+    console.error('   Please set the following environment variables:');
+    console.error('   - TWILIO_ACCOUNT_SID');
+    console.error('   - TWILIO_AUTH_TOKEN');
+    console.error('   - TWILIO_WHATSAPP_NUMBER');
+    console.error('   Check TWILIO_SETUP_FIX.md for detailed instructions');
     return false;
   }
   
@@ -74,6 +100,17 @@ function initializeTwilioClients() {
 
 // Function to send WhatsApp message with failover
 async function sendWhatsAppMessageWithFailover(messageOptions) {
+  // Ensure Twilio clients are available; lazily initialize if needed
+  if (twilioClients.length === 0) {
+    console.log('🔧 No Twilio clients initialized yet. Attempting lazy initialization...');
+    const ok = initializeTwilioClients();
+    if (!ok || twilioClients.length === 0) {
+      const error = new Error('No Twilio accounts configured. Please set environment variables: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER');
+      error.code = 'NO_TWILIO_CONFIG';
+      throw error;
+    }
+  }
+  
   const errors = [];
   
   // Try each client in order until one succeeds
@@ -200,7 +237,7 @@ router.post('/', async (req, res) => {
     console.log(`🖼️ Media files: ${numMedia}`);
 
     // Check if farmer exists
-    const farmer = await Farmer.findOne({ phone: fromNumber });
+    const farmer = await Farmer.findOne({ phone: normalizePhone(fromNumber) });
     
     if (!farmer) {
       twiml.message('❌ Sorry, you are not registered as a farmer. Please contact admin for registration.');
@@ -210,6 +247,28 @@ router.post('/', async (req, res) => {
     if (!farmer.isActive) {
       twiml.message('❌ Your account is currently inactive. Please contact admin.');
       return res.type('text/xml').send(twiml.toString());
+    }
+
+    // If farmer is approved but welcome not sent yet, send it now (post-join)
+    if (farmer.approvalStatus === 'approved' && !farmer.welcomeSent) {
+      try {
+        const sandboxJoinCode = process.env.TWILIO_SANDBOX_JOIN_CODE || 'organization-organized';
+        const sandboxNumber = process.env.TWILIO_SANDBOX_NUMBER || '+14155238886';
+        const welcomeMsg = `🎉 *Welcome ${farmer.name}!*\n\n` +
+          `You're now connected with FarmLink AI.\n\n` +
+          `You can list produce by sending: [Vegetable] [Quantity] (e.g., Tomato 50 kg)\n\n` +
+          `If messages ever fail, ensure you are joined to sandbox by sending \"join ${sandboxJoinCode}\" to ${sandboxNumber}.`;
+
+        await sendWhatsAppMessageWithFailover({
+          body: welcomeMsg,
+          to: `whatsapp:${normalizePhone(fromNumber)}`
+        });
+        farmer.welcomeSent = true;
+        await farmer.save();
+        console.log(`✅ Late welcome message delivered to ${fromNumber}`);
+      } catch (e) {
+        console.error('⚠️ Failed to send late welcome:', e.message);
+      }
     }
 
     // Parse message for product listing
@@ -466,3 +525,5 @@ module.exports = router;
 module.exports.initializeTwilioClients = initializeTwilioClients;
 module.exports.sendWhatsAppMessageWithFailover = sendWhatsAppMessageWithFailover;
 module.exports.isCreditLimitError = isCreditLimitError;
+// Export twilioClients so other modules can access it
+module.exports.twilioClients = twilioClients;

@@ -1,19 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const Farmer = require('../models/Farmer');
-const twilio = require('twilio');
 const { verifyToken } = require('./auth');
+const { normalizePhone, ensureWhatsAppAddress } = require('../utils/phone');
 
-// Initialize Twilio client
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+// Import the failover WhatsApp messaging system
+const whatsappRoutes = require('./whatsapp');
+const sendWhatsAppMessageWithFailover = whatsappRoutes.sendWhatsAppMessageWithFailover;
 
 // Farmer self-registration (public - no auth required)
 router.post('/register', async (req, res) => {
   try {
     const { name, phone, village, district, crops } = req.body;
+
+    // Normalize phone to E.164 early
+    const normalizedPhone = normalizePhone(phone);
 
     // Validate required fields
     if (!name || !phone || !village || !district) {
@@ -24,7 +25,7 @@ router.post('/register', async (req, res) => {
     }
 
     // Check if farmer already exists
-    const existingFarmer = await Farmer.findOne({ phone });
+    const existingFarmer = await Farmer.findOne({ phone: normalizedPhone });
     if (existingFarmer) {
       return res.status(400).json({
         success: false,
@@ -36,7 +37,7 @@ router.post('/register', async (req, res) => {
     // Create new farmer with pending status
     const newFarmer = new Farmer({
       name,
-      phone,
+      phone: normalizedPhone,
       village,
       district,
       location: `${village}, ${district}`,
@@ -126,22 +127,27 @@ router.post('/approve/:id', verifyToken, async (req, res) => {
     console.log(`✅ Farmer approved: ${farmer.name} (${farmer.phone})`);
     console.log(`   Approved by: ${req.admin.username}`);
 
-    // Send welcome WhatsApp with join instructions
+    // Prepare join instructions for Twilio sandbox or Business API
+    const sandboxJoinCode = process.env.TWILIO_SANDBOX_JOIN_CODE || 'organization-organized';
+    const sandboxNumber = process.env.TWILIO_SANDBOX_NUMBER || '+14155238886';
+    const joinInstructions = `1) Save ${sandboxNumber} as "Twilio Sandbox"\n2) Send: join ${sandboxJoinCode}\n3) After Twilio confirms, reply with any message here.`;
+
+    // Send welcome WhatsApp with join instructions using failover system
     try {
-      const farmerWhatsApp = farmer.phone.startsWith('whatsapp:') ? farmer.phone : `whatsapp:${farmer.phone}`;
-      const twilioWhatsApp = process.env.TWILIO_WHATSAPP_NUMBER;
+      // Ensure phone number is correctly formatted for WhatsApp
+      // Ensure E.164 and whatsapp: prefix
+      let farmerWhatsApp = ensureWhatsAppAddress(farmer.phone);
       
       console.log(`📨 Sending welcome message to approved farmer...`);
-      console.log(`   From: ${twilioWhatsApp}`);
       console.log(`   To: ${farmerWhatsApp}`);
       
       const welcomeMsg = `🎉 *Congratulations ${farmer.name}!*\n\n` +
         `Your FarmLink AI account has been APPROVED! ✅\n\n` +
         `You can now start listing your vegetables on our marketplace.\n\n` +
         `*FIRST STEP - Join WhatsApp:*\n` +
-        `Please reply to this message with:\n\n` +
-        `*join organization-organized*\n\n` +
-        `(Just copy and send the above text)\n\n` +
+        `Please send the following message to ${sandboxNumber}:\n\n` +
+        `*join ${sandboxJoinCode}*\n\n` +
+        `(Open WhatsApp, message the Twilio sandbox number above with that text)\n\n` +
         `*After joining, listing is easy:*\n` +
         `Just send: [Vegetable] [Quantity]\n\n` +
         `Examples:\n` +
@@ -151,27 +157,44 @@ router.post('/approve/:id', verifyToken, async (req, res) => {
         `📸 You can attach photos for better prices!\n\n` +
         `Welcome to FarmLink AI! 🧑‍🌾`;
 
-      const message = await twilioClient.messages.create({
+      // Import the failover WhatsApp messaging system
+      const whatsappRoutes = require('./whatsapp');
+      
+      // Initialize Twilio clients if not already initialized
+      if (!whatsappRoutes.twilioClients || whatsappRoutes.twilioClients.length === 0) {
+        console.log('🔧 Initializing Twilio clients for approval message...');
+        whatsappRoutes.initializeTwilioClients();
+      }
+      
+      const sendWhatsAppMessageWithFailover = whatsappRoutes.sendWhatsAppMessageWithFailover;
+      
+      await sendWhatsAppMessageWithFailover({
         body: welcomeMsg,
-        from: twilioWhatsApp,
         to: farmerWhatsApp
       });
 
-      console.log(`✅ Welcome WhatsApp sent! Message SID: ${message.sid}`);
+      farmer.welcomeSent = true;
+      await farmer.save();
+
+      console.log(`✅ Welcome WhatsApp sent successfully!`);
       
       res.json({
         success: true,
         message: 'Farmer approved successfully! Welcome WhatsApp sent.',
-        farmer: farmer
+        farmer: farmer,
+        joinInstructions
       });
     } catch (twilioError) {
       console.error('⚠️ Failed to send WhatsApp:', twilioError.message);
+      console.error('⚠️ Error code:', twilioError.code);
+      console.error('⚠️ Error stack:', twilioError.stack);
       
       res.json({
         success: true,
         message: 'Farmer approved! (WhatsApp notification failed - check Twilio setup)',
         farmer: farmer,
-        error: twilioError.message
+        error: twilioError.message,
+        joinInstructions
       });
     }
 
@@ -238,7 +261,7 @@ router.put('/:id', verifyToken, async (req, res) => {
     }
 
     if (name) farmer.name = name;
-    if (phone) farmer.phone = phone;
+    if (phone) farmer.phone = normalizePhone(phone);
     if (location !== undefined) farmer.location = location;
     if (isActive !== undefined) farmer.isActive = isActive;
 
