@@ -14,9 +14,13 @@ const MessagingResponse = twilio.twiml.MessagingResponse;
 let twilioClients = [];
 let currentClientIndex = 0;
 
+// Export twilioClients so other modules can access it
+module.exports.twilioClients = twilioClients;
+
 // Function to initialize multiple Twilio clients
 function initializeTwilioClients() {
-  twilioClients = [];
+  // Clear the existing array
+  twilioClients.length = 0;
   currentClientIndex = 0;
   
   // Check for multiple account configurations
@@ -484,3 +488,5 @@ module.exports = router;
 module.exports.initializeTwilioClients = initializeTwilioClients;
 module.exports.sendWhatsAppMessageWithFailover = sendWhatsAppMessageWithFailover;
 module.exports.isCreditLimitError = isCreditLimitError;
+// Export twilioClients so other modules can access it
+module.exports.twilioClients = twilioClients;

@@ -152,6 +152,13 @@ router.post('/approve/:id', verifyToken, async (req, res) => {
 
       // Import the failover WhatsApp messaging system
       const whatsappRoutes = require('./whatsapp');
+      
+      // Initialize Twilio clients if not already initialized
+      if (!whatsappRoutes.twilioClients || whatsappRoutes.twilioClients.length === 0) {
+        console.log('🔧 Initializing Twilio clients for approval message...');
+        whatsappRoutes.initializeTwilioClients();
+      }
+      
       const sendWhatsAppMessageWithFailover = whatsappRoutes.sendWhatsAppMessageWithFailover;
       
       await sendWhatsAppMessageWithFailover({
