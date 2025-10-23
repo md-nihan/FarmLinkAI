@@ -200,36 +200,62 @@ function isCreditLimitError(error) {
          error.status === 429; // HTTP Too Many Requests
 }
 
-// Function to download and save image from Twilio
-async function downloadAndSaveImage(imageUrl) {
+// Resolve Twilio credentials for a given Account SID (supports multi-account)
+function getTwilioAuthForAccount(accountSid) {
+  if (!accountSid) {
+    return { username: process.env.TWILIO_ACCOUNT_SID, password: process.env.TWILIO_AUTH_TOKEN };
+  }
+  // Check primary first
+  if (process.env.TWILIO_ACCOUNT_SID === accountSid && process.env.TWILIO_AUTH_TOKEN) {
+    return { username: process.env.TWILIO_ACCOUNT_SID, password: process.env.TWILIO_AUTH_TOKEN };
+  }
+  // Check indexed accounts TWILIO_ACCOUNT_SID_1..5
+  for (let i = 1; i <= 5; i++) {
+    const sid = process.env[`TWILIO_ACCOUNT_SID_${i}`];
+    const token = process.env[`TWILIO_AUTH_TOKEN_${i}`];
+    if (sid === accountSid && token) return { username: sid, password: token };
+  }
+  // Fallback to primary env vars
+  return { username: process.env.TWILIO_ACCOUNT_SID, password: process.env.TWILIO_AUTH_TOKEN };
+}
+
+// Function to download and save image from Twilio (uses correct account creds)
+async function downloadAndSaveImage(imageUrl, accountSid) {
   try {
     console.log('📥 Downloading image from Twilio...');
-    
-    // Download image with Twilio authentication
+
+    const auth = getTwilioAuthForAccount(accountSid);
+    if (!auth.username || !auth.password) {
+      console.warn('⚠️ Twilio credentials missing; cannot fetch media');
+      return null;
+    }
+
+    // Download image with proper Twilio authentication
     const response = await axios({
       method: 'GET',
       url: imageUrl,
-      auth: {
-        username: process.env.TWILIO_ACCOUNT_SID,
-        password: process.env.TWILIO_AUTH_TOKEN
-      },
+      auth,
       responseType: 'arraybuffer',
       timeout: 30000 // 30 second timeout
     });
-    
+
+    // Ensure uploads directory exists
+    const uploadsDir = path.join(__dirname, '../public/uploads');
+    try { fs.mkdirSync(uploadsDir, { recursive: true }); } catch (e) {}
+
     // Generate unique filename
-    const fileExtension = imageUrl.includes('.jpg') || imageUrl.includes('jpeg') ? '.jpg' : 
+    const fileExtension = imageUrl.includes('.jpg') || imageUrl.includes('jpeg') ? '.jpg' :
                          imageUrl.includes('.png') ? '.png' : '.jpg';
     const filename = `product-${crypto.randomBytes(16).toString('hex')}${fileExtension}`;
-    const filepath = path.join(__dirname, '../public/uploads', filename);
-    
+    const filepath = path.join(uploadsDir, filename);
+
     // Save image to public/uploads directory
     fs.writeFileSync(filepath, response.data);
-    
+
     // Return the public URL path
     const publicUrl = `/uploads/${filename}`;
     console.log(`✅ Image saved successfully: ${publicUrl}`);
-    
+
     return publicUrl;
   } catch (error) {
     console.error('❌ Error downloading image:', error.message);
@@ -357,8 +383,8 @@ router.post('/', async (req, res) => {
       const twilioMediaUrl = req.body.MediaUrl0;
       console.log(`🖼️ Original Twilio URL: ${twilioMediaUrl}`);
       
-      // Download and save image locally
-      const localImagePath = await downloadAndSaveImage(twilioMediaUrl);
+      // Download and save image locally (use the AccountSid from webhook for correct auth)
+      const localImagePath = await downloadAndSaveImage(twilioMediaUrl, req.body.AccountSid);
       
       if (localImagePath) {
         // Construct full URL for the image

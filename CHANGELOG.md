@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2025-10-23] - WhatsApp inbound not replying (fast fix + plan captured)
 
 ### Fix: Resilient welcome + order notifications
+- WhatsApp image downloads now use the correct Twilio account credentials when multiple accounts are configured (download uses webhook AccountSid). Ensures images load on the site.
 - Added Farmer.welcomeSentAt and ensured late-welcome is sent on first inbound even if previous attempts weren’t recorded.
 - After a product is listed, if welcome wasn’t recorded, a compact welcome is sent automatically.
 - Approval flow now records welcomeSentAt.
