@@ -32,11 +32,8 @@ app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve static files from public directory
+// Serve static files from public directory (including uploads)
 app.use(express.static(path.join(__dirname, 'public')));
-
-// Ensure uploads directory is properly served
-app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 
 // API Routes
 // Primary webhook path (documented)

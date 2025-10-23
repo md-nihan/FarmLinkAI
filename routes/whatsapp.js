@@ -387,37 +387,10 @@ router.post('/', async (req, res) => {
       const localImagePath = await downloadAndSaveImage(twilioMediaUrl, req.body.AccountSid);
       
       if (localImagePath) {
-        // Construct full URL for the image
-        // Use the same logic as server.js for consistency
-        let backendBase;
-        // Use environment variable if set and not in local development
-        if (process.env.BACKEND_PUBLIC_URL && process.env.NODE_ENV !== 'development') {
-          backendBase = process.env.BACKEND_PUBLIC_URL;
-        } else if (process.env.NODE_ENV === 'production') {
-          const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
-          const host = req.headers['x-forwarded-host'] || req.headers.host;
-          backendBase = `${proto}://${host}`;
-        } else {
-          // For local development, use localhost
-          backendBase = `http://localhost:${process.env.PORT || 3001}`;
-        }
-        
-        // Ensure we always use the correct production URL for deployed images
-        if (process.env.NODE_ENV === 'production' && !process.env.BACKEND_PUBLIC_URL) {
-          // Fallback to the known deployed URL if environment variable is not set
-          backendBase = 'https://farmlinkai-7.onrender.com';
-        }
-        
-        // Ensure we don't have double slashes
-        if (localImagePath.startsWith('/')) {
-          imageUrl = `${backendBase}${localImagePath}`;
-        } else {
-          imageUrl = `${backendBase}/${localImagePath}`;
-        }
-        
-        console.log(`✅ Image will be accessible at: ${imageUrl}`);
-        console.log(`🔧 Backend Base URL: ${backendBase}`);
-        console.log(`🔧 Local Image Path: ${localImagePath}`);
+        // Store only the relative path in the database
+        // The full URL will be constructed by the API endpoint when serving products
+        imageUrl = localImagePath;
+        console.log(`✅ Image path stored in database: ${imageUrl}`);
       } else {
         console.log('⚠️ Failed to download image, will use default grade');
       }

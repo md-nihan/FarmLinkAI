@@ -15,15 +15,47 @@ router.get('/', async (req, res) => {
     const products = await Product.find({ status: 'available' })
       .sort({ createdAt: -1 })
       .limit(50);
-    
-    // Fix image URLs for production
+
+    // Normalize image URLs to current server origin (works for local and prod)
+    const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    const origin = `${proto}://${host}`;
+
     const fixedProducts = products.map(product => {
-      if (product.image_url && product.image_url.includes('localhost:3001')) {
-        product.image_url = product.image_url.replace('http://localhost:3001', 'https://farmlinkai-7.onrender.com');
+      if (product.image_url) {
+        try {
+          const u = new URL(product.image_url);
+          if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
+            product.image_url = `${origin}${u.pathname}`;
+          } else {
+            // If the URL contains our uploads path, always normalize to current origin
+            const idx = product.image_url.indexOf('/uploads/');
+            if (idx >= 0) {
+              const pathname = product.image_url.substring(idx);
+              product.image_url = `${origin}${pathname}`;
+            }
+          }
+        } catch (_) {
+          // If it's a relative path like /uploads/..., prefix with origin
+          if (product.image_url.startsWith('/')) {
+            product.image_url = `${origin}${product.image_url}`;
+          }
+        }
+        // If the path points to /uploads but file is missing, clear it so frontend shows placeholder
+        const uploadsIdx = product.image_url.indexOf('/uploads/');
+        if (uploadsIdx >= 0) {
+          const path = require('path');
+          const fs = require('fs');
+          const fname = product.image_url.substring(uploadsIdx + '/uploads/'.length);
+          const localPath = path.join(__dirname, '..', 'public', 'uploads', fname);
+          if (!fs.existsSync(localPath)) {
+            product.image_url = '';
+          }
+        }
       }
       return product;
     });
-    
+
     res.json({
       success: true,
       count: fixedProducts.length,
@@ -43,19 +75,48 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-    
+
     if (!product) {
       return res.status(404).json({
         success: false,
         message: 'Product not found'
       });
     }
-    
-    // Fix image URL for production
-    if (product.image_url && product.image_url.includes('localhost:3001')) {
-      product.image_url = product.image_url.replace('http://localhost:3001', 'https://farmlinkai-7.onrender.com');
+
+    // Normalize image URL to current server origin (works for local and prod)
+    if (product.image_url) {
+      const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+      const host = req.headers['x-forwarded-host'] || req.headers.host;
+      const origin = `${proto}://${host}`;
+      try {
+        const u = new URL(product.image_url);
+        if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
+          product.image_url = `${origin}${u.pathname}`;
+        } else {
+          const idx = product.image_url.indexOf('/uploads/');
+          if (idx >= 0) {
+            const pathname = product.image_url.substring(idx);
+            product.image_url = `${origin}${pathname}`;
+          }
+        }
+      } catch (_) {
+        if (product.image_url.startsWith('/')) {
+          product.image_url = `${origin}${product.image_url}`;
+        }
+      }
+      // If the path points to /uploads but file is missing, clear it so frontend shows placeholder
+      const uploadsIdx = product.image_url.indexOf('/uploads/');
+      if (uploadsIdx >= 0) {
+        const path = require('path');
+        const fs = require('fs');
+        const fname = product.image_url.substring(uploadsIdx + '/uploads/'.length);
+        const localPath = path.join(__dirname, '..', 'public', 'uploads', fname);
+        if (!fs.existsSync(localPath)) {
+          product.image_url = '';
+        }
+      }
     }
-    
+
     res.json({
       success: true,
       product: product
@@ -173,15 +234,45 @@ router.get('/farmer/:phone', async (req, res) => {
   try {
     const products = await Product.find({ farmer_phone: req.params.phone })
       .sort({ createdAt: -1 });
-    
-    // Fix image URLs for production
+
+    // Normalize image URLs to current server origin (works for local and prod)
+    const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    const origin = `${proto}://${host}`;
+
     const fixedProducts = products.map(product => {
-      if (product.image_url && product.image_url.includes('localhost:3001')) {
-        product.image_url = product.image_url.replace('http://localhost:3001', 'https://farmlinkai-7.onrender.com');
+      if (product.image_url) {
+        try {
+          const u = new URL(product.image_url);
+          if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
+            product.image_url = `${origin}${u.pathname}`;
+          } else {
+            const idx = product.image_url.indexOf('/uploads/');
+            if (idx >= 0) {
+              const pathname = product.image_url.substring(idx);
+              product.image_url = `${origin}${pathname}`;
+            }
+          }
+        } catch (_) {
+          if (product.image_url.startsWith('/')) {
+            product.image_url = `${origin}${product.image_url}`;
+          }
+        }
+        // If the path points to /uploads but file is missing, clear it so frontend shows placeholder
+        const uploadsIdx = product.image_url.indexOf('/uploads/');
+        if (uploadsIdx >= 0) {
+          const path = require('path');
+          const fs = require('fs');
+          const fname = product.image_url.substring(uploadsIdx + '/uploads/'.length);
+          const localPath = path.join(__dirname, '..', 'public', 'uploads', fname);
+          if (!fs.existsSync(localPath)) {
+            product.image_url = '';
+          }
+        }
       }
       return product;
     });
-    
+
     res.json({
       success: true,
       count: fixedProducts.length,

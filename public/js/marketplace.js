@@ -109,6 +109,7 @@ function createProductCard(product) {
         }
       }
     }
+    
     const createdDate = new Date(product.createdAt).toLocaleDateString();
     
     return `
