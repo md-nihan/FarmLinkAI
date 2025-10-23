@@ -4,6 +4,7 @@ const twilio = require('twilio');
 const axios = require('axios');
 const Product = require('../models/Product');
 const Farmer = require('../models/Farmer');
+const { normalizePhone, ensureWhatsAppAddress } = require('../utils/phone');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -36,9 +37,14 @@ function initializeTwilioClients() {
   for (let i = 1; i <= 5; i++) {
     const accountSid = process.env[`TWILIO_ACCOUNT_SID_${i}`];
     const authToken = process.env[`TWILIO_AUTH_TOKEN_${i}`];
-    const whatsappNumber = process.env[`TWILIO_WHATSAPP_NUMBER_${i}`] || process.env.TWILIO_WHATSAPP_NUMBER;
+    let whatsappNumber = process.env[`TWILIO_WHATSAPP_NUMBER_${i}`] || process.env.TWILIO_WHATSAPP_NUMBER;
     
     if (accountSid && authToken) {
+      // Ensure correct WhatsApp from address (whatsapp:+E164)
+      if (whatsappNumber) {
+        const e164From = normalizePhone(whatsappNumber);
+        whatsappNumber = e164From.startsWith('whatsapp:') ? e164From : `whatsapp:${e164From}`;
+      }
       accountConfigs.push({
         accountSid,
         authToken,
@@ -50,10 +56,15 @@ function initializeTwilioClients() {
   
   // If no multiple accounts found, use the primary account
   if (accountConfigs.length === 0 && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+    let whatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER;
+    if (whatsappNumber) {
+      const e164From = normalizePhone(whatsappNumber);
+      whatsappNumber = e164From.startsWith('whatsapp:') ? e164From : `whatsapp:${e164From}`;
+    }
     accountConfigs.push({
       accountSid: process.env.TWILIO_ACCOUNT_SID,
       authToken: process.env.TWILIO_AUTH_TOKEN,
-      whatsappNumber: process.env.TWILIO_WHATSAPP_NUMBER
+      whatsappNumber: whatsappNumber
     });
     console.log('✅ Primary Twilio Account configured');
   }

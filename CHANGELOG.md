@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated farmers.js to use WhatsApp failover system
 - Enhanced Twilio client initialization with better logging
 - Improved error messages for missing Twilio configuration
+- Added phone normalization (E.164) and WhatsApp address enforcement to reduce delivery failures
 
 ## [2025-10-23] - Image Display Fix
 

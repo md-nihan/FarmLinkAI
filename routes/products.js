@@ -3,6 +3,7 @@ const router = express.Router();
 const Product = require('../models/Product');
 const Farmer = require('../models/Farmer');
 const twilio = require('twilio');
+const { ensureWhatsAppAddress, normalizePhone } = require('../utils/phone');
 
 // We'll import the sendWhatsAppMessageWithFailover function from whatsapp routes
 const whatsappRoutes = require('./whatsapp');
@@ -103,10 +104,7 @@ router.post('/order/:productId', async (req, res) => {
     // Send WhatsApp notification to farmer with failover
     try {
       // Ensure phone number is correctly formatted for WhatsApp
-      let farmerWhatsApp = product.farmer_phone;
-      if (!farmerWhatsApp.startsWith('whatsapp:')) {
-        farmerWhatsApp = `whatsapp:${product.farmer_phone}`;
-      }
+      let farmerWhatsApp = ensureWhatsAppAddress(product.farmer_phone);
       
       console.log(`📨 Sending order notification...`);
       console.log(`   To: ${farmerWhatsApp}`);
@@ -230,7 +228,7 @@ router.post('/create', async (req, res) => {
 
     // Send confirmation notification via WhatsApp with failover
     try {
-      const farmerWhatsApp = farmer_phone.startsWith('whatsapp:') ? farmer_phone : `whatsapp:${farmer_phone}`;
+      const farmerWhatsApp = ensureWhatsAppAddress(farmer_phone);
       
       const confirmationMsg = `✅ Product Listed Successfully!\n\n` +
         `📦 Product: ${product_name}\n` +

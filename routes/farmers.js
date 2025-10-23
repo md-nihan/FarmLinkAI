@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Farmer = require('../models/Farmer');
 const { verifyToken } = require('./auth');
+const { normalizePhone, ensureWhatsAppAddress } = require('../utils/phone');
 
 // Import the failover WhatsApp messaging system
 const whatsappRoutes = require('./whatsapp');
@@ -12,6 +13,9 @@ router.post('/register', async (req, res) => {
   try {
     const { name, phone, village, district, crops } = req.body;
 
+    // Normalize phone to E.164 early
+    const normalizedPhone = normalizePhone(phone);
+
     // Validate required fields
     if (!name || !phone || !village || !district) {
       return res.status(400).json({
@@ -21,7 +25,7 @@ router.post('/register', async (req, res) => {
     }
 
     // Check if farmer already exists
-    const existingFarmer = await Farmer.findOne({ phone });
+    const existingFarmer = await Farmer.findOne({ phone: normalizedPhone });
     if (existingFarmer) {
       return res.status(400).json({
         success: false,
@@ -33,7 +37,7 @@ router.post('/register', async (req, res) => {
     // Create new farmer with pending status
     const newFarmer = new Farmer({
       name,
-      phone,
+      phone: normalizedPhone,
       village,
       district,
       location: `${village}, ${district}`,
@@ -126,10 +130,8 @@ router.post('/approve/:id', verifyToken, async (req, res) => {
     // Send welcome WhatsApp with join instructions using failover system
     try {
       // Ensure phone number is correctly formatted for WhatsApp
-      let farmerWhatsApp = farmer.phone;
-      if (!farmerWhatsApp.startsWith('whatsapp:')) {
-        farmerWhatsApp = `whatsapp:${farmer.phone}`;
-      }
+      // Ensure E.164 and whatsapp: prefix
+      let farmerWhatsApp = ensureWhatsAppAddress(farmer.phone);
       
       console.log(`📨 Sending welcome message to approved farmer...`);
       console.log(`   To: ${farmerWhatsApp}`);
@@ -249,7 +251,7 @@ router.put('/:id', verifyToken, async (req, res) => {
     }
 
     if (name) farmer.name = name;
-    if (phone) farmer.phone = phone;
+    if (phone) farmer.phone = normalizePhone(phone);
     if (location !== undefined) farmer.location = location;
     if (isActive !== undefined) farmer.isActive = isActive;
 
