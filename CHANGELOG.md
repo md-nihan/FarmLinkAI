@@ -30,6 +30,7 @@ User report: After verification on WhatsApp, no "Congratulations" or "Product Li
 Actions executed fast:
 - Added webhook alias so both `POST /api/whatsapp` (primary) and `POST /whatsapp` (alias) are handled by the same router. This catches common Twilio Console misconfiguration and restores inbound processing immediately.
 - Left existing `/api/whatsapp/test` health route for quick verification.
+- Hardened order alerts: strict E.164 + whatsapp: formatting and one-time retry after re-initializing Twilio clients.
 
 Operator steps to verify now:
 1. In Twilio Console → WhatsApp Sandbox, set "When a message comes in" to:
