@@ -33,6 +33,7 @@ Actions executed fast:
 - Hardened order alerts: strict E.164 + whatsapp: formatting and one-time retry after re-initializing Twilio clients.
 - Prefer sandbox sender and try ALL configured Twilio accounts on any error to avoid misrouted sends when multiple accounts exist.
 - Route order alerts through the exact Twilio number the farmer used (store `lastWhatsappFrom` on inbound and use it for outbound).
+- Store `lastTwilioAccountSid` from inbound webhooks and prefer that account for outbound alerts (fixes multi-sandbox delivery).
 
 Operator steps to verify now:
 1. In Twilio Console → WhatsApp Sandbox, set "When a message comes in" to:

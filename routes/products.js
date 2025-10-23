@@ -128,7 +128,9 @@ router.post('/order/:productId', async (req, res) => {
       try {
         const farmerDoc = await Farmer.findOne({ phone: normalizePhone(product.farmer_phone) });
         preferredFrom = farmerDoc?.lastWhatsappFrom || '';
+        var preferredAccountSid = farmerDoc?.lastTwilioAccountSid || '';
         if (preferredFrom) console.log(`🔎 Using preferred from-number for farmer: ${preferredFrom}`);
+        if (preferredAccountSid) console.log(`🏷️  Using preferred AccountSid for farmer: ${preferredAccountSid}`);
       } catch (e) {
         console.warn('⚠️ Could not fetch farmer for preferred from-number:', e.message);
       }
@@ -136,11 +138,11 @@ router.post('/order/:productId', async (req, res) => {
       // Send with failover, retry once on config/credit errors
       const sendFn = whatsappRoutes.sendWhatsAppMessageWithFailover;
       try {
-        await sendFn({ body: notificationMsg, to: farmerWhatsApp, preferredFrom });
+        await sendFn({ body: notificationMsg, to: farmerWhatsApp, preferredFrom, preferredAccountSid });
       } catch (err1) {
         console.warn('⚠️ First send attempt failed, re-initializing Twilio and retrying once...', err1.code, err1.message);
         whatsappRoutes.initializeTwilioClients();
-        await sendFn({ body: notificationMsg, to: farmerWhatsApp, preferredFrom });
+        await sendFn({ body: notificationMsg, to: farmerWhatsApp, preferredFrom, preferredAccountSid });
       }
 
       console.log(`✅ Order notification sent successfully!`);

@@ -63,6 +63,11 @@ const farmerSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  // Track which Twilio Account SID handled the farmer's inbound (to select correct account for outbound)
+  lastTwilioAccountSid: {
+    type: String,
+    default: ''
+  },
   createdAt: {
     type: Date,
     default: Date.now

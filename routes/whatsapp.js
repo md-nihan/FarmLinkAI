@@ -115,11 +115,21 @@ async function sendWhatsAppMessageWithFailover(messageOptions) {
 
   // Prefer a specific WhatsApp number if provided (e.g., sandbox number user joined)
   const preferredFrom = messageOptions.preferredFrom || process.env.PREFERRED_TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_SANDBOX_NUMBER || process.env.TWILIO_WHATSAPP_NUMBER;
+  const preferredAccountSid = messageOptions.preferredAccountSid || '';
   let order = [...twilioClients.keys()];
-  if (preferredFrom) {
+  
+  // 1) Prefer exact AccountSid match if provided
+  if (preferredAccountSid) {
+    const idxBySid = twilioClients.findIndex(tc => tc.config.accountSid === preferredAccountSid);
+    if (idxBySid >= 0) {
+      const others = order.filter(i => i !== idxBySid);
+      order = [idxBySid, ...others];
+    }
+  }
+  // 2) Otherwise prefer matching from-number if provided
+  if (!preferredAccountSid && preferredFrom) {
     const idx = twilioClients.findIndex(tc => (tc.config.whatsappNumber || '').replace(/^whatsapp:/,'') === preferredFrom.replace(/^whatsapp:/,''));
     if (idx >= 0) {
-      // Try preferred account first, then others (keeping round-robin starting point as tie-breaker)
       const others = order.filter(i => i !== idx);
       order = [idx, ...others];
     }
@@ -236,11 +246,13 @@ router.post('/', async (req, res) => {
     const fromNumber = req.body.From ? req.body.From.replace('whatsapp:', '') : '';
     const toNumberRaw = req.body.To || '';
     const toNumberWhatsApp = toNumberRaw && toNumberRaw.startsWith('whatsapp:') ? toNumberRaw : (toNumberRaw ? `whatsapp:${normalizePhone(toNumberRaw)}` : '');
+    const accountSid = req.body.AccountSid || '';
     const numMedia = parseInt(req.body.NumMedia) || 0;
     
     console.log(`📱 WhatsApp Message from ${fromNumber}: \"${incomingMsg}\"`);
     console.log(`🖼️ Media files: ${numMedia}`);
     console.log(`➡️  Delivered to our number: ${toNumberWhatsApp || 'unknown'}`);
+    console.log(`🏷️  Twilio AccountSid: ${accountSid || 'unknown'}`);
 
     // Check if farmer exists
     const farmer = await Farmer.findOne({ phone: normalizePhone(fromNumber) });
@@ -251,13 +263,22 @@ router.post('/', async (req, res) => {
     }
 
     // Update the farmer's lastWhatsappFrom if changed (used for outbound selection)
+    let updatedMeta = false;
     if (toNumberWhatsApp && farmer.lastWhatsappFrom !== toNumberWhatsApp) {
+      farmer.lastWhatsappFrom = toNumberWhatsApp;
+      updatedMeta = true;
+      console.log(`🔗 Linking farmer ${farmer.phone} to from-number ${toNumberWhatsApp}`);
+    }
+    if (accountSid && farmer.lastTwilioAccountSid !== accountSid) {
+      farmer.lastTwilioAccountSid = accountSid;
+      updatedMeta = true;
+      console.log(`🏷️  Linking farmer ${farmer.phone} to AccountSid ${accountSid}`);
+    }
+    if (updatedMeta) {
       try {
-        farmer.lastWhatsappFrom = toNumberWhatsApp;
         await farmer.save();
-        console.log(`🔗 Linked farmer ${farmer.phone} to from-number ${toNumberWhatsApp}`);
       } catch (e) {
-        console.error('⚠️ Failed to save lastWhatsappFrom:', e.message);
+        console.error('⚠️ Failed to save farmer messaging meta:', e.message);
       }
     }
 
