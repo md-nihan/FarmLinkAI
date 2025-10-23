@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved error handling and logging for Twilio messages
 - Twilio client initialization issue in farmer approval process
 - Fixed WhatsApp messaging system to properly send approval messages
+- Added lazy initialization of Twilio clients inside message sender to avoid race conditions
+- Ensure order notification route initializes Twilio clients if needed
 
 ### Changed
 - Updated WhatsApp webhook to generate correct production URLs

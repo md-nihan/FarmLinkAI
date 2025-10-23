@@ -89,11 +89,15 @@ function initializeTwilioClients() {
 
 // Function to send WhatsApp message with failover
 async function sendWhatsAppMessageWithFailover(messageOptions) {
-  // Check if any Twilio clients are available
+  // Ensure Twilio clients are available; lazily initialize if needed
   if (twilioClients.length === 0) {
-    const error = new Error('No Twilio accounts configured. Please set environment variables: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER');
-    error.code = 'NO_TWILIO_CONFIG';
-    throw error;
+    console.log('🔧 No Twilio clients initialized yet. Attempting lazy initialization...');
+    const ok = initializeTwilioClients();
+    if (!ok || twilioClients.length === 0) {
+      const error = new Error('No Twilio accounts configured. Please set environment variables: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER');
+      error.code = 'NO_TWILIO_CONFIG';
+      throw error;
+    }
   }
   
   const errors = [];

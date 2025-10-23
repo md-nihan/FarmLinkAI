@@ -111,6 +111,12 @@ router.post('/order/:productId', async (req, res) => {
       console.log(`📨 Sending order notification...`);
       console.log(`   To: ${farmerWhatsApp}`);
       
+      // Initialize Twilio clients if not already initialized
+      if (!whatsappRoutes.twilioClients || whatsappRoutes.twilioClients.length === 0) {
+        console.log('🔧 Initializing Twilio clients for order notification...');
+        whatsappRoutes.initializeTwilioClients();
+      }
+      
       const notificationMsg = `🎉 *Order Alert!*\n\n` +
         `A buyer wants to purchase your produce:\n\n` +
         `📦 Product: ${product.product_name}\n` +
