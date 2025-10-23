@@ -39,7 +39,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 
 // API Routes
+// Primary webhook path (documented)
 app.use('/api/whatsapp', whatsappRoutes);
+// Alias webhook path to catch misconfigured Twilio consoles (common mistake)
+app.use('/whatsapp', whatsappRoutes);
+
 app.use('/api/products', productRoutes);
 app.use('/api/farmers', farmerRoutes);
 app.use('/api/auth', authRoutes);

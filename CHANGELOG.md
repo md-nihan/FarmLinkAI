@@ -17,6 +17,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - WhatsApp messaging failover system for farmers.js
 - Debug scripts for testing WhatsApp functionality
 
+## [2025-10-23] - WhatsApp inbound not replying (fast fix + plan captured)
+
+User report: After verification on WhatsApp, no "Congratulations" or "Product Listed" replies when sending messages like "Banana 50kg"; products not appearing on website.
+
+Actions executed fast:
+- Added webhook alias so both `POST /api/whatsapp` (primary) and `POST /whatsapp` (alias) are handled by the same router. This catches common Twilio Console misconfiguration and restores inbound processing immediately.
+- Left existing `/api/whatsapp/test` health route for quick verification.
+
+Operator steps to verify now:
+1. In Twilio Console → WhatsApp Sandbox, set "When a message comes in" to:
+   - https://<your-domain>/api/whatsapp  (preferred) or
+   - https://<your-domain>/whatsapp      (now also accepted)
+   Method: POST.
+2. Send a WhatsApp message: `Banana 50kg`.
+   - Expected immediate reply with confirmation.
+   - Product should appear on marketplace homepage.
+3. If still no reply, check server logs for `📱 WhatsApp Message from` and Twilio delivery logs.
+
+Notes:
+- No schema changes. Safe deploy.
+- This entry documents the conversation-driven fix and plan.
+
 ### Fixed
 - Image display issue on mobile devices
 - WhatsApp image URLs pointing to localhost instead of production URL
