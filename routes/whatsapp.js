@@ -249,8 +249,8 @@ router.post('/', async (req, res) => {
       return res.type('text/xml').send(twiml.toString());
     }
 
-    // If farmer is approved but welcome not sent yet, send it now (post-join)
-    if (farmer.approvalStatus === 'approved' && !farmer.welcomeSent) {
+    // If farmer is approved but welcome not sent yet (or not recorded), send it now (post-join)
+    if (farmer.approvalStatus === 'approved' && (!farmer.welcomeSent || !farmer.welcomeSentAt)) {
       try {
         const sandboxJoinCode = process.env.TWILIO_SANDBOX_JOIN_CODE || 'organization-organized';
         const sandboxNumber = process.env.TWILIO_SANDBOX_NUMBER || '+14155238886';
@@ -264,6 +264,7 @@ router.post('/', async (req, res) => {
           to: `whatsapp:${normalizePhone(fromNumber)}`
         });
         farmer.welcomeSent = true;
+        farmer.welcomeSentAt = new Date();
         await farmer.save();
         console.log(`✅ Late welcome message delivered to ${fromNumber}`);
       } catch (e) {
@@ -402,6 +403,22 @@ router.post('/', async (req, res) => {
       // Continue anyway - don't fail the whole process
     }
     
+    // After confirmation, ensure welcome message delivered if never recorded
+    if (farmer.approvalStatus === 'approved' && !farmer.welcomeSent) {
+      try {
+        const sandboxJoinCode = process.env.TWILIO_SANDBOX_JOIN_CODE || 'organization-organized';
+        const sandboxNumber = process.env.TWILIO_SANDBOX_NUMBER || '+14155238886';
+        const quickWelcome = `🎉 Congratulations ${farmer.name}! Your FarmLink AI account is active.\nSend: [Vegetable] [Quantity] (e.g., Tomato 50 kg). If messages fail, send \"join ${sandboxJoinCode}\" to ${sandboxNumber}.`;
+        await sendWhatsAppMessageWithFailover({ body: quickWelcome, to: `whatsapp:${normalizePhone(fromNumber)}` });
+        farmer.welcomeSent = true;
+        farmer.welcomeSentAt = new Date();
+        await farmer.save();
+        console.log(`✅ Post-listing welcome delivered to ${fromNumber}`);
+      } catch (e) {
+        console.error('⚠️ Failed to send post-listing welcome:', e.message);
+      }
+    }
+
     // Always send TwiML response
     if (whatsappSent) {
       twiml.message(confirmationMsg);

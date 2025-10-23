@@ -54,6 +54,10 @@ const farmerSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  // Track when welcome was successfully sent (for resiliency)
+  welcomeSentAt: {
+    type: Date
+  },
   createdAt: {
     type: Date,
     default: Date.now

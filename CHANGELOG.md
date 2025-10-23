@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2025-10-23] - WhatsApp inbound not replying (fast fix + plan captured)
 
+### Fix: Resilient welcome + order notifications
+- Added Farmer.welcomeSentAt and ensured late-welcome is sent on first inbound even if previous attempts weren’t recorded.
+- After a product is listed, if welcome wasn’t recorded, a compact welcome is sent automatically.
+- Approval flow now records welcomeSentAt.
+- No breaking changes to APIs.
+
 User report: After verification on WhatsApp, no "Congratulations" or "Product Listed" replies when sending messages like "Banana 50kg"; products not appearing on website.
 
 Actions executed fast:

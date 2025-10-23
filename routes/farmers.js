@@ -174,6 +174,7 @@ router.post('/approve/:id', verifyToken, async (req, res) => {
       });
 
       farmer.welcomeSent = true;
+      farmer.welcomeSentAt = new Date();
       await farmer.save();
 
       console.log(`✅ Welcome WhatsApp sent successfully!`);
