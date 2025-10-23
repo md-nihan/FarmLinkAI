@@ -15,10 +15,18 @@ router.get('/', async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(50);
     
+    // Fix image URLs for production
+    const fixedProducts = products.map(product => {
+      if (product.image_url && product.image_url.includes('localhost:3001')) {
+        product.image_url = product.image_url.replace('http://localhost:3001', 'https://farmlinkai-7.onrender.com');
+      }
+      return product;
+    });
+    
     res.json({
       success: true,
-      count: products.length,
-      products: products
+      count: fixedProducts.length,
+      products: fixedProducts
     });
   } catch (error) {
     console.error('Error fetching products:', error);
@@ -40,6 +48,11 @@ router.get('/:id', async (req, res) => {
         success: false,
         message: 'Product not found'
       });
+    }
+    
+    // Fix image URL for production
+    if (product.image_url && product.image_url.includes('localhost:3001')) {
+      product.image_url = product.image_url.replace('http://localhost:3001', 'https://farmlinkai-7.onrender.com');
     }
     
     res.json({
@@ -136,10 +149,18 @@ router.get('/farmer/:phone', async (req, res) => {
     const products = await Product.find({ farmer_phone: req.params.phone })
       .sort({ createdAt: -1 });
     
+    // Fix image URLs for production
+    const fixedProducts = products.map(product => {
+      if (product.image_url && product.image_url.includes('localhost:3001')) {
+        product.image_url = product.image_url.replace('http://localhost:3001', 'https://farmlinkai-7.onrender.com');
+      }
+      return product;
+    });
+    
     res.json({
       success: true,
-      count: products.length,
-      products: products
+      count: fixedProducts.length,
+      products: fixedProducts
     });
   } catch (error) {
     console.error('Error fetching farmer products:', error);

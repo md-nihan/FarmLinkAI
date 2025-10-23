@@ -136,7 +136,14 @@ const getBackendPublicUrl = (req) => {
   if (process.env.NODE_ENV === 'production') {
     const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
     const host = req.headers['x-forwarded-host'] || req.headers.host;
-    return `${proto}://${host}`;
+    const derivedUrl = `${proto}://${host}`;
+    
+    // Fallback to known deployed URL if headers are not reliable
+    if (!host || host.includes('localhost')) {
+      return 'https://farmlinkai-7.onrender.com';
+    }
+    
+    return derivedUrl;
   }
   
   // For local development, use localhost

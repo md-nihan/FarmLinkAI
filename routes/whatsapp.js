@@ -278,6 +278,12 @@ router.post('/', async (req, res) => {
           backendBase = `http://localhost:${process.env.PORT || 3001}`;
         }
         
+        // Ensure we always use the correct production URL for deployed images
+        if (process.env.NODE_ENV === 'production' && !process.env.BACKEND_PUBLIC_URL) {
+          // Fallback to the known deployed URL if environment variable is not set
+          backendBase = 'https://farmlinkai-7.onrender.com';
+        }
+        
         // Ensure we don't have double slashes
         if (localImagePath.startsWith('/')) {
           imageUrl = `${backendBase}${localImagePath}`;
@@ -390,7 +396,13 @@ router.post('/', async (req, res) => {
           // Prefer explicit BACKEND_PUBLIC_URL; otherwise derive from request headers
           const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
           const host = req.headers['x-forwarded-host'] || req.headers.host;
-          const backendBase = process.env.BACKEND_PUBLIC_URL || `${proto}://${host}` || 'https://farmlinkai-7.onrender.com';
+          let backendBase = process.env.BACKEND_PUBLIC_URL || `${proto}://${host}`;
+          
+          // Ensure we always use the correct production URL for deployed images
+          if (process.env.NODE_ENV === 'production' && !process.env.BACKEND_PUBLIC_URL) {
+            // Fallback to the known deployed URL if environment variable is not set
+            backendBase = 'https://farmlinkai-7.onrender.com';
+          }
           
           // Ensure we don't have double slashes
           let imageFullUrl = imageUrl;
