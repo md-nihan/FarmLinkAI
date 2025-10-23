@@ -22,6 +22,12 @@ function initializeTwilioClients() {
   // Check for multiple account configurations
   const accountConfigs = [];
   
+  console.log('🔧 Initializing Twilio clients...');
+  console.log(`   NODE_ENV: ${process.env.NODE_ENV}`);
+  console.log(`   TWILIO_ACCOUNT_SID: ${process.env.TWILIO_ACCOUNT_SID ? 'SET' : 'NOT SET'}`);
+  console.log(`   TWILIO_AUTH_TOKEN: ${process.env.TWILIO_AUTH_TOKEN ? 'SET' : 'NOT SET'}`);
+  console.log(`   TWILIO_WHATSAPP_NUMBER: ${process.env.TWILIO_WHATSAPP_NUMBER || 'NOT SET'}`);
+  
   // Check for multiple accounts (TWILIO_ACCOUNT_SID_1, TWILIO_ACCOUNT_SID_2, etc.)
   for (let i = 1; i <= 5; i++) {
     const accountSid = process.env[`TWILIO_ACCOUNT_SID_${i}`];
@@ -65,6 +71,11 @@ function initializeTwilioClients() {
   
   if (twilioClients.length === 0) {
     console.error('❌ No Twilio accounts configured!');
+    console.error('   Please set the following environment variables:');
+    console.error('   - TWILIO_ACCOUNT_SID');
+    console.error('   - TWILIO_AUTH_TOKEN');
+    console.error('   - TWILIO_WHATSAPP_NUMBER');
+    console.error('   Check TWILIO_SETUP_FIX.md for detailed instructions');
     return false;
   }
   
@@ -74,6 +85,13 @@ function initializeTwilioClients() {
 
 // Function to send WhatsApp message with failover
 async function sendWhatsAppMessageWithFailover(messageOptions) {
+  // Check if any Twilio clients are available
+  if (twilioClients.length === 0) {
+    const error = new Error('No Twilio accounts configured. Please set environment variables: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER');
+    error.code = 'NO_TWILIO_CONFIG';
+    throw error;
+  }
+  
   const errors = [];
   
   // Try each client in order until one succeeds

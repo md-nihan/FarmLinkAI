@@ -1,14 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const Farmer = require('../models/Farmer');
-const twilio = require('twilio');
 const { verifyToken } = require('./auth');
 
-// Initialize Twilio client
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+// Import the failover WhatsApp messaging system
+const whatsappRoutes = require('./whatsapp');
+const sendWhatsAppMessageWithFailover = whatsappRoutes.sendWhatsAppMessageWithFailover;
 
 // Farmer self-registration (public - no auth required)
 router.post('/register', async (req, res) => {
@@ -126,13 +123,11 @@ router.post('/approve/:id', verifyToken, async (req, res) => {
     console.log(`✅ Farmer approved: ${farmer.name} (${farmer.phone})`);
     console.log(`   Approved by: ${req.admin.username}`);
 
-    // Send welcome WhatsApp with join instructions
+    // Send welcome WhatsApp with join instructions using failover system
     try {
       const farmerWhatsApp = farmer.phone.startsWith('whatsapp:') ? farmer.phone : `whatsapp:${farmer.phone}`;
-      const twilioWhatsApp = process.env.TWILIO_WHATSAPP_NUMBER;
       
       console.log(`📨 Sending welcome message to approved farmer...`);
-      console.log(`   From: ${twilioWhatsApp}`);
       console.log(`   To: ${farmerWhatsApp}`);
       
       const welcomeMsg = `🎉 *Congratulations ${farmer.name}!*\n\n` +
@@ -151,13 +146,12 @@ router.post('/approve/:id', verifyToken, async (req, res) => {
         `📸 You can attach photos for better prices!\n\n` +
         `Welcome to FarmLink AI! 🧑‍🌾`;
 
-      const message = await twilioClient.messages.create({
+      await sendWhatsAppMessageWithFailover({
         body: welcomeMsg,
-        from: twilioWhatsApp,
         to: farmerWhatsApp
       });
 
-      console.log(`✅ Welcome WhatsApp sent! Message SID: ${message.sid}`);
+      console.log(`✅ Welcome WhatsApp sent successfully!`);
       
       res.json({
         success: true,
@@ -166,6 +160,7 @@ router.post('/approve/:id', verifyToken, async (req, res) => {
       });
     } catch (twilioError) {
       console.error('⚠️ Failed to send WhatsApp:', twilioError.message);
+      console.error('⚠️ Error code:', twilioError.code);
       
       res.json({
         success: true,
