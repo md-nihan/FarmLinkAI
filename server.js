@@ -54,7 +54,6 @@ app.get('/api/test-twilio', async (req, res) => {
     // Import the WhatsApp routes to access the multi-account system
     const whatsappRoutes = require('./routes/whatsapp');
     const initializeTwilioClients = whatsappRoutes.initializeTwilioClients;
-    const sendWhatsAppMessageWithFailover = whatsappRoutes.sendWhatsAppMessageWithFailover;
     
     // Re-initialize clients to ensure they're loaded
     initializeTwilioClients();
@@ -71,6 +70,22 @@ app.get('/api/test-twilio', async (req, res) => {
       message: 'Error testing Twilio system',
       error: error.message
     });
+  }
+});
+
+// Send a test WhatsApp message (debug helper)
+app.post('/api/test-twilio', async (req, res) => {
+  try {
+    const { to, message } = req.body || {};
+    if (!to || !message) {
+      return res.status(400).json({ success: false, message: 'Provide `to` (whatsapp:+E164) and `message`' });
+    }
+    const whatsappRoutes = require('./routes/whatsapp');
+    whatsappRoutes.initializeTwilioClients();
+    const sent = await whatsappRoutes.sendWhatsAppMessageWithFailover({ body: message, to });
+    res.json({ success: true, message: 'Message request sent', sid: sent?.sid || null });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to send test message', error: error.message, code: error.code });
   }
 });
 
